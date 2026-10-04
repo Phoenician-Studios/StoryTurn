@@ -22,3 +22,10 @@
 - **Gap:** Home labels used a local calendar date while generation and demo schedule edits used UTC, skipping or failing to update tonight after UTC midnight.
 - **Going forward:** Derive generation bounds and future-night filters in each schedule's timezone. Test generation, edits, and deletion across UTC/local date boundaries in both data paths.
 - **Pointers:** `src/lib/domain/calendar-date.ts`, `tests/schedule-feedback.test.ts`, `tests/supabase-repository.test.ts`
+
+### 2026-10-04 — Test the form that submits replacement lists
+
+- **Source:** PR #4 · Greptile
+- **Gap:** A store-only test resubmitted planned books manually and could not catch the session form dropping checked library books or prefilled freeform titles.
+- **Going forward:** When saving replaces a collection, test the rendered form through its server action and assert retained entries after submission.
+- **Pointers:** `tests/session-book-form.test.ts`, `src/app/sessions/[id]/page.tsx`, `updateSessionAction`
