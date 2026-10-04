@@ -8,7 +8,7 @@ import { timezoneOptions } from "@/lib/domain/timezones";
 
 const subscribe = () => () => {};
 const browserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
-const serverTimezone = () => "";
+const serverTimezone = () => "UTC";
 
 export function TimezonePicker({ defaultValue }: { defaultValue?: string }) {
   const detected = useSyncExternalStore(subscribe, browserTimezone, serverTimezone);

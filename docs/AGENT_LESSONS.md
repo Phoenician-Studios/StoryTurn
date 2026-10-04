@@ -29,3 +29,10 @@
 - **Gap:** A store-only test resubmitted planned books manually and could not catch the session form dropping checked library books or prefilled freeform titles.
 - **Going forward:** When saving replaces a collection, test the rendered form through its server action and assert retained entries after submission.
 - **Pointers:** `tests/session-book-form.test.ts`, `src/app/sessions/[id]/page.tsx`, `updateSessionAction`
+
+### 2026-10-04 — Keep timezone forms usable before hydration
+
+- **Source:** PR #5 · Greptile
+- **Gap:** Browser-only timezone detection left a required server-rendered select empty, so new schedules lacked a usable default before hydration. Label formatting also repeated for every zone on each selection.
+- **Going forward:** Test server-rendered form validity alongside client detection, preserve explicit saved choices, and cache supported-zone labels independently of selection state.
+- **Pointers:** `src/components/timezone-picker.tsx`, `tests/timezone-picker.test.ts`, `tests/timezone-options.test.ts`

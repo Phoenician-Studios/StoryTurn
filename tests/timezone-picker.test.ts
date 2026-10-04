@@ -34,3 +34,14 @@ it("supports cities worldwide, fractional offsets, and changing the selection", 
   expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(option.value);
   expect(screen.queryByRole("option", { name: /Los Angeles/ })).toBeNull();
 });
+
+it("server-renders a usable timezone for new schedules before JavaScript runs", async () => {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const html = renderToStaticMarkup(createElement(TimezonePicker));
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  const select = container.querySelector("select")!;
+  expect(select.value).toBe("UTC");
+  expect(select.checkValidity()).toBe(true);
+  expect(select.selectedOptions[0].disabled).toBe(false);
+});
