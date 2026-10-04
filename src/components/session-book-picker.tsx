@@ -1,58 +1,265 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BookOpen, Check, Plus, X } from "lucide-react";
+import { searchLibraryBooksAction } from "@/app/library-picker-actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { LibraryBook, LibraryPage } from "@/lib/domain/library-page";
 
 export function SessionBookPicker({
   books,
   selectedIds,
 }: {
-  books: { id: string; title: string }[];
+  books: LibraryBook[];
   selectedIds: string[];
 }) {
   const [selected, setSelected] = useState(selectedIds);
+  const [bookDetails, setBookDetails] = useState<Record<string, LibraryBook>>(() =>
+    Object.fromEntries(books.map((book) => [book.id, book])),
+  );
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [result, setResult] = useState<LibraryPage | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    const timer = setTimeout(async () => {
+      try {
+        const next = await searchLibraryBooksAction(query, page);
+        if (!active) return;
+        setResult(next);
+        setBookDetails((existing) => ({
+          ...existing,
+          ...Object.fromEntries(next.items.map((book) => [book.id, book])),
+        }));
+      } catch {
+        if (active) setError("Could not load your library. Please try again.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [open, query, page, retry]);
+
+  function startLoading() {
+    setLoading(true);
+    setError("");
+  }
+
   return (
-    <details className="group rounded-lg border border-input bg-background">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-ring sm:text-sm [&::-webkit-details-marker]:hidden">
-        <span>
-          Books from library ·{" "}
-          {selected.length ? `${selected.length} selected` : "Choose books"}
-        </span>
-        <ChevronDown
-          className="size-4 shrink-0 transition-transform group-open:rotate-180"
-          aria-hidden="true"
-        />
-      </summary>
-      <div className="max-h-64 overflow-y-auto border-t border-border p-2">
-        {books.length ? (
-          books.map((book) => (
-            <label
-              key={book.id}
-              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-secondary"
+    <div className="space-y-3">
+      {selected.map((id) => (
+        <input key={id} type="hidden" name="bookIds" value={id} />
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        className="min-h-11"
+        onClick={() => {
+          startLoading();
+          setOpen(true);
+        }}
+      >
+        <Plus aria-hidden="true" /> Add books from library
+      </Button>
+      {selected.length > 0 && (
+        <ul className="space-y-2" aria-label="Selected books">
+          {selected.map((id) => (
+            <li
+              key={id}
+              className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-1.5 text-sm"
             >
-              <input
-                type="checkbox"
-                name="bookIds"
-                value={book.id}
-                checked={selected.includes(book.id)}
-                className="size-4 shrink-0 accent-primary"
-                onChange={(event) =>
-                  setSelected((ids) =>
-                    event.target.checked
-                      ? [...ids, book.id]
-                      : ids.filter((id) => id !== book.id),
-                  )
-                }
-              />
-              <span className="min-w-0 break-words">{book.title}</span>
-            </label>
-          ))
-        ) : (
-          <p className="px-2 py-3 text-sm text-muted-foreground">
-            Your library is empty. Add books in Library or enter a title below.
-          </p>
-        )}
-      </div>
-    </details>
+              <div className="flex min-w-0 items-center gap-3">
+                <BookCover
+                  book={bookDetails[id] ?? { id, title: "Selected book" }}
+                  thumbnail
+                />
+                <span className="min-w-0 break-words">
+                  {bookDetails[id]?.title ?? "Selected book"}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Remove ${bookDetails[id]?.title ?? "selected book"}`}
+                onClick={() => setSelected((ids) => ids.filter((value) => value !== id))}
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (next) startLoading();
+          setOpen(next);
+        }}
+      >
+        <DialogContent className="sm:max-w-xl max-h-[85dvh] overflow-y-auto">
+          <DialogTitle>Add books from your library</DialogTitle>
+          <DialogDescription>
+            Choose books for this night. Your selections stay selected across searches and
+            pages.
+          </DialogDescription>
+          <Input
+            aria-label="Search library books"
+            placeholder="Search by title"
+            value={query}
+            onChange={(event) => {
+              startLoading();
+              setQuery(event.target.value);
+              setPage(1);
+            }}
+          />
+          <div aria-live="polite" role="status">
+            {loading
+              ? "Searching your library…"
+              : error ||
+                (result
+                  ? `${result.total} ${result.total === 1 ? "book" : "books"} · ${selected.length} selected`
+                  : "")}
+          </div>
+          {error && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                startLoading();
+                setRetry((value) => value + 1);
+              }}
+            >
+              Try again
+            </Button>
+          )}
+          {!loading && !error && result && (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {result.items.length ? (
+                  result.items.map((book) => (
+                    <button
+                      key={book.id}
+                      type="button"
+                      aria-pressed={selected.includes(book.id)}
+                      aria-label={book.title}
+                      onClick={() =>
+                        setSelected((ids) =>
+                          ids.includes(book.id)
+                            ? ids.filter((id) => id !== book.id)
+                            : [...ids, book.id],
+                        )
+                      }
+                      className={`group relative flex flex-col items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${selected.includes(book.id) ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/50 hover:bg-secondary/50"}`}
+                    >
+                      <BookCover book={book} />
+                      <span className="w-full text-sm font-medium leading-snug">
+                        {book.title}
+                      </span>
+                      {selected.includes(book.id) && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
+                        >
+                          <Check className="size-4" />
+                        </span>
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <p className="col-span-full py-4 text-muted-foreground">
+                    {query.trim()
+                      ? "No books match your search."
+                      : "Your library is empty. Add books in Library or enter a title below."}
+                  </p>
+                )}
+              </div>
+              {result.pageCount > 1 && (
+                <nav
+                  aria-label="Library pages"
+                  className="flex items-center justify-between gap-2"
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={result.page <= 1}
+                    onClick={() => {
+                      startLoading();
+                      setPage(result.page - 1);
+                    }}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm">
+                    Page {result.page} of {result.pageCount}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={result.page >= result.pageCount}
+                    onClick={() => {
+                      startLoading();
+                      setPage(result.page + 1);
+                    }}
+                  >
+                    Next
+                  </Button>
+                </nav>
+              )}
+            </>
+          )}
+          <Button type="button" className="min-h-11" onClick={() => setOpen(false)}>
+            Done · {selected.length} selected
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function BookCover({
+  book,
+  thumbnail = false,
+}: {
+  book: LibraryBook;
+  thumbnail?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-secondary/60 ${thumbnail ? "h-10 w-7" : "h-36 w-full"}`}
+    >
+      {book.coverUrl && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={book.coverUrl}
+          alt=""
+          loading="lazy"
+          className="h-full max-w-full rounded object-contain shadow-sm"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <BookOpen
+          aria-hidden="true"
+          className={`${thumbnail ? "size-5" : "size-10"} text-primary/50`}
+        />
+      )}
+    </span>
   );
 }

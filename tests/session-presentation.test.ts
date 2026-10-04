@@ -26,7 +26,7 @@ it("uses Tonight and Tomorrow in the family's timezone, including UTC midnight",
     "Tomorrow",
   );
   expect(upcomingSessionDay("2026-10-06T19:30:00", "America/Chicago", now)).toBe(
-    "2026-10-06",
+    "Tuesday, Oct 6",
   );
 });
 it("uses calendar days across month, year, and daylight-saving transitions", () => {

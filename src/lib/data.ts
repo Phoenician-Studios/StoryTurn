@@ -125,3 +125,9 @@ export async function getFamilySessionPage(requestedPage?: string | string[]) {
     ? demo.getFamilySessionPage(requestedPage)
     : live.getFamilySessionPage(requestedPage);
 }
+
+export async function getLibraryPage(query: string, page = 1) {
+  return isDemoMode()
+    ? demo.getLibraryPage(query, page)
+    : live.getLibraryPage(query, page);
+}

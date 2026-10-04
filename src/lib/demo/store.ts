@@ -1,3 +1,4 @@
+import { paginateLibrary } from "@/lib/domain/library-page";
 import { paginateSessions } from "@/lib/domain/session-presentation";
 import {
   assertScheduleSettings,
@@ -730,4 +731,10 @@ export function getFamilySessionPage(requestedPage?: string | string[]) {
     (a) => ids.has(a.sessionId) && a.isCurrent,
   );
   return { ...pagination, assignments };
+}
+
+export function getLibraryPage(query: string, page = 1) {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Sign in to choose library books");
+  return paginateLibrary(getLibrary(), query, page);
 }

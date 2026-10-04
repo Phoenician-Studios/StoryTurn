@@ -156,3 +156,9 @@ input[type="reset"] {
     box-shadow: 0 0 0 10px rgba(232, 161, 74, 0);
   }
 }
+
+@layer base {
+  input[type="checkbox"] {
+    accent-color: var(--primary);
+  }
+}

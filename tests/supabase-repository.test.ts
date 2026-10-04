@@ -4,6 +4,7 @@ import {
   ensureAllUpcomingSessions,
   saveSchedule,
   getFamilySessionPage,
+  getLibraryPage,
 } from "@/lib/supabase/repository";
 type Row = Record<string, unknown>;
 const fixture = vi.hoisted(() => ({
@@ -71,6 +72,14 @@ function client() {
         },
         eq: (key: string, value: unknown) => {
           filters.push((r) => r[key] === value);
+          return builder;
+        },
+        ilike: (key: string, pattern: string) => {
+          const term = pattern
+            .slice(1, -1)
+            .replace(/\\([\\%_])/g, "$1")
+            .toLowerCase();
+          filters.push((row) => String(row[key]).toLowerCase().includes(term));
           return builder;
         },
         in: (key: string, values: unknown[]) => {
@@ -301,4 +310,36 @@ it("assigns only family library books to generated nights and keeps them on repe
   const assigned = [...fixture.tables.session_books];
   expect(await ensureAllUpcomingSessions(1)).toBe(0);
   expect(fixture.tables.session_books).toEqual(assigned);
+});
+
+it("searches and paginates the family library beyond the database row cap", async () => {
+  fixture.tables.books = Array.from({ length: 1005 }, (_, i) => ({
+    id: `book-${String(i).padStart(4, "0")}`,
+    family_id: "family",
+    title: `Story ${String(i).padStart(4, "0")}`,
+  }));
+  fixture.tables.books.push({
+    id: "other",
+    family_id: "other-family",
+    title: "Story 1004",
+  });
+  const last = await getLibraryPage("Story", 101);
+  expect(last).toMatchObject({ page: 101, pageCount: 101, total: 1005 });
+  expect(last.items.map((book) => book.id)).toEqual([
+    "book-1000",
+    "book-1001",
+    "book-1002",
+    "book-1003",
+    "book-1004",
+  ]);
+  expect(await getLibraryPage("1004", 99)).toMatchObject({
+    total: 1,
+    page: 1,
+    items: [{ id: "book-1004" }],
+  });
+  expect(await getLibraryPage("missing", 2)).toMatchObject({
+    total: 0,
+    page: 1,
+    items: [],
+  });
 });

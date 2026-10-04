@@ -1,3 +1,4 @@
+import { librarySearchTerm, type LibraryPage } from "@/lib/domain/library-page";
 import { sessionPageBounds } from "@/lib/domain/session-presentation";
 import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
@@ -890,4 +891,37 @@ export async function getFamilySessionPage(requestedPage?: string | string[]) {
           "Could not load session readers",
         );
   return { items, assignments, page, pageCount, total };
+}
+
+export async function getLibraryPage(
+  query: string,
+  requestedPage = 1,
+): Promise<LibraryPage> {
+  const { supabase, member } = requireMember(await loadContext());
+  const term = librarySearchTerm(query).replace(/[\\%_]/g, "\\$&");
+  const scopedQuery = () => {
+    const builder = supabase
+      .from("books")
+      .select("id,title,cover_url", { count: "exact" })
+      .eq("family_id", member.familyId);
+    return term ? builder.ilike("title", `%${term}%`) : builder;
+  };
+  const countResult = await scopedQuery().limit(0);
+  assertNoError(countResult.error, "Could not search library");
+  const bounds = sessionPageBounds(countResult.count ?? 0, String(requestedPage));
+  const result = await scopedQuery()
+    .order("title")
+    .order("id")
+    .range(bounds.from, bounds.to);
+  assertNoError(result.error, "Could not search library");
+  return {
+    items: (result.data ?? []).map((book) => ({
+      id: book.id,
+      title: book.title,
+      coverUrl: book.cover_url,
+    })),
+    page: bounds.page,
+    pageCount: bounds.pageCount,
+    total: bounds.total,
+  };
 }
