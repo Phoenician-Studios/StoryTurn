@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createFamilyAction, joinFamilyAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -11,18 +12,23 @@ export default async function OnboardingPage() {
   if (!user) redirect("/login");
   if (await getCurrentMember()) redirect("/");
 
+  const inviteCode = (await cookies()).get("storyturn-invite")?.value;
+
   return (
     <main className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-12">
       <div className="animate-rise">
         <p className="font-display text-4xl text-primary">StoryTurn</p>
         <h1 className="mt-2 text-2xl font-medium">Create or join a family</h1>
         <p className="mt-1 text-muted-foreground">
-          Parents, grandparents, and other readers all join the same family with
-          an invite code.
+          Parents, grandparents, and other readers all join the same family with an invite
+          code.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <form action={createFamilyAction} className="story-panel animate-rise rounded-2xl p-5 space-y-4">
+        <form
+          action={createFamilyAction}
+          className="story-panel animate-rise rounded-2xl p-5 space-y-4"
+        >
           <h2 className="font-display text-xl">Create a family</h2>
           <div className="space-y-2">
             <Label htmlFor="name">Family name</Label>
@@ -30,11 +36,20 @@ export default async function OnboardingPage() {
           </div>
           <Button type="submit">Create family</Button>
         </form>
-        <form action={joinFamilyAction} className="story-panel animate-rise-delay rounded-2xl p-5 space-y-4">
+        <form
+          action={joinFamilyAction}
+          className="story-panel animate-rise-delay rounded-2xl p-5 space-y-4"
+        >
           <h2 className="font-display text-xl">Join with invite</h2>
           <div className="space-y-2">
             <Label htmlFor="code">Invite code</Label>
-            <Input id="code" name="code" placeholder="RIVERA24" required />
+            <Input
+              id="code"
+              name="code"
+              placeholder="RIVERA24"
+              defaultValue={inviteCode}
+              required
+            />
           </div>
           <Button type="submit" variant="secondary">
             Join family
