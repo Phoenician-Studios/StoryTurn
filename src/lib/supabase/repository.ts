@@ -445,6 +445,7 @@ async function sendInvite(
     familyName: family.name,
     scheduledFor: previous?.scheduledFor ?? session.scheduledFor,
     icsUid: session.icsUid,
+    sequence: session.calendarSequence ?? 0,
     attendees,
     method,
   });

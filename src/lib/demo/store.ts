@@ -293,10 +293,12 @@ export function saveSchedule(input: {
       const wasCancelled = session.status === "cancelled";
       if (day < input.startDate) {
         if (wasCancelled) continue;
+        session.calendarSequence = (session.calendarSequence ?? 0) + 1;
         session.status = "cancelled";
         session.cancellationSource = "schedule";
         void sendSessionInvite(session.id, "CANCEL");
       } else {
+        session.calendarSequence = (session.calendarSequence ?? 0) + 1;
         session.status = "scheduled";
         session.cancellationSource = null;
         session.scheduledFor = `${day}T${input.timeLocal}:00`;
@@ -362,6 +364,7 @@ async function sendSessionInvite(
     familyName: family.name,
     scheduledFor: previous?.scheduledFor ?? session.scheduledFor,
     icsUid: session.icsUid,
+    sequence: session.calendarSequence ?? 0,
     attendees: members.map((member) => ({
       email: member.email,
       displayName: member.displayName,
@@ -481,6 +484,7 @@ export async function cancelSession(
   assertTransition(detail.session.status, "cancelled");
   detail.session.status = "cancelled";
   detail.session.cancellationSource = source;
+  detail.session.calendarSequence = (detail.session.calendarSequence ?? 0) + 1;
   detail.session.updatedAt = new Date().toISOString();
   await sendSessionInvite(sessionId, "CANCEL");
 }
@@ -518,6 +522,7 @@ export async function updateSession(input: {
   detail.session.status = input.status;
   detail.session.cancellationSource = input.status === "cancelled" ? "individual" : null;
   detail.session.notes = input.notes;
+  detail.session.calendarSequence = (detail.session.calendarSequence ?? 0) + 1;
   detail.session.updatedAt = new Date().toISOString();
 
   state().assignments = applyReassignment({

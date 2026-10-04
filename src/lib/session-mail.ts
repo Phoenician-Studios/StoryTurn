@@ -6,6 +6,7 @@ export async function sendSessionInviteEmail(input: {
   familyName: string;
   scheduledFor: string;
   icsUid: string;
+  sequence: number;
   attendees: { email: string; displayName: string }[];
   method: "REQUEST" | "CANCEL";
 }): Promise<{
@@ -28,7 +29,7 @@ export async function sendSessionInviteEmail(input: {
     organizerName: input.familyName,
     attendeeEmails: attendees.map((member) => member.email),
     method: input.method,
-    sequence: input.method === "CANCEL" ? 1 : 0,
+    sequence: input.sequence,
   });
 
   const subject = readingInviteSubject({
