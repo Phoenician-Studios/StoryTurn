@@ -159,18 +159,22 @@ Correction rule: editing a past session never deletes original assignment rows (
 
 - Requirements locked (ICS, calendar in v1, dashboard filters, cancel, multi-reader invites, tests+CI).
 - Feature plan written.
+- Next.js app shipped on `main` with demo mode, domain unit tests (25), and GitHub Actions CI.
+- Supabase SQL migration + client stubs ready for real credentials.
 
 ### Remaining work
 
-- Scaffold and implement v1 end-to-end on `main`.
+- Wire demo store paths to live Supabase Auth/DB once project credentials exist.
+- Enable Google provider + password reset emails in Supabase; real Plunk sends; QStash schedule.
+- After GitHub repo exists: require `lint-test-build` status check on `main`.
 
 ### Blockers / risks
 
-- Real Supabase/Plunk/QStash credentials needed for full email/auth integration; ship with `.env.example` + safe local fallbacks.
-- User has no GitHub repo yet; CI workflow is ready once the repo exists and branch protection is enabled.
+- Real Supabase/Plunk/QStash credentials needed for production auth/email.
+- Branch protection must be enabled manually in GitHub.
 
 ### Pointers for the next agent
 
-- Start at: scaffold Next.js, then Supabase migration + auth pages.
+- Start at: replace demo store calls with Supabase queries while keeping domain helpers.
 - Do not: add per-kid ownership or profile photos in v1.
-- Verify with: `npm test`, `npm run lint`, manual happy path on home → session → library → dashboard.
+- Verify with: `npm test`, `npm run lint`, `npm run build`, manual happy path on home → session → library → dashboard.
