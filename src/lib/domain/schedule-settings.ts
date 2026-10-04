@@ -13,5 +13,6 @@ export function assertScheduleSettings(input: {
     throw new Error("Enter a valid start date");
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.timeLocal))
     throw new Error("Enter a valid bedtime");
-  if (!isValidTimezone(input.timezone)) throw new Error("Choose a valid timezone");
+  if (!isValidTimezone(input.timezone))
+    throw new Error("Your device timezone could not be detected. Reload and try again.");
 }
