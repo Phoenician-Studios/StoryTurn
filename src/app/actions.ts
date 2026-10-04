@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { appUrl, isDemoMode } from "@/lib/config";
@@ -127,6 +128,7 @@ export async function updatePasswordAction(formData: FormData) {
 }
 
 export async function logoutAction() {
+  (await cookies()).delete("storyturn-invite");
   if (isDemoMode()) {
     demoLogout();
   } else {
@@ -138,12 +140,14 @@ export async function logoutAction() {
 
 export async function createFamilyAction(formData: FormData) {
   await createFamily(String(formData.get("name") ?? "Our family"));
+  (await cookies()).delete("storyturn-invite");
   revalidatePath("/");
   redirect("/");
 }
 
 export async function joinFamilyAction(formData: FormData) {
   await joinFamily(String(formData.get("code") ?? ""));
+  (await cookies()).delete("storyturn-invite");
   revalidatePath("/");
   redirect("/");
 }
@@ -225,6 +229,7 @@ export async function switchDemoUserAction(formData: FormData) {
   if (!isDemoMode()) {
     authErrorRedirect("/login", "Demo users are only available in demo mode");
   }
+  (await cookies()).delete("storyturn-invite");
   demoLogin(String(formData.get("email") ?? "alex@example.com"));
   revalidatePath("/");
   redirect("/");
