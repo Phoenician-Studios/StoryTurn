@@ -83,6 +83,14 @@
   --sidebar-ring: #1f6f5b;
 }
 
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  cursor: pointer;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -90,8 +98,16 @@
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(ellipse 80% 50% at 10% -10%, rgba(232, 161, 74, 0.18), transparent 55%),
-      radial-gradient(ellipse 70% 45% at 100% 0%, rgba(31, 111, 91, 0.16), transparent 50%),
+      radial-gradient(
+        ellipse 80% 50% at 10% -10%,
+        rgba(232, 161, 74, 0.18),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 70% 45% at 100% 0%,
+        rgba(31, 111, 91, 0.16),
+        transparent 50%
+      ),
       linear-gradient(180deg, #eef5f3 0%, #e3efe9 45%, #eef5f3 100%);
     background-attachment: fixed;
   }

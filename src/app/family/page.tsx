@@ -1,16 +1,13 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { addKidAction, createInviteAction } from "@/app/actions";
+import { CopyInviteLink } from "@/components/copy-invite-link";
 import { AppNav } from "@/components/app-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  getCurrentMember,
-  getCurrentUser,
-  getFamilyAdmin,
-} from "@/lib/data";
+import { getCurrentMember, getCurrentUser, getFamilyAdmin } from "@/lib/data";
 
 export default async function FamilyPage() {
   const user = await getCurrentUser();
@@ -27,8 +24,7 @@ export default async function FamilyPage() {
         <section className="animate-rise">
           <h1 className="font-display text-3xl text-primary">{admin.family.name}</h1>
           <p className="mt-1 text-muted-foreground">
-            Manage kids, readers, and invite codes for grandparents or other
-            caregivers.
+            Manage kids, readers, and invite codes for grandparents or other caregivers.
           </p>
         </section>
 
@@ -60,14 +56,15 @@ export default async function FamilyPage() {
                   className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2"
                 >
                   <span className="font-medium">{kid.name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    Age {kid.age}
-                  </span>
+                  <span className="text-sm text-muted-foreground">Age {kid.age}</span>
                 </li>
               ))}
             </ul>
             {member.role === "owner" ? (
-              <form action={addKidAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_5rem_auto]">
+              <form
+                action={addKidAction}
+                className="mt-4 grid gap-3 sm:grid-cols-[1fr_5rem_auto]"
+              >
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
                   <Input id="name" name="name" required />
@@ -110,13 +107,14 @@ export default async function FamilyPage() {
                 key={invite.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
               >
-                <code className="font-mono text-sm tracking-wider">
-                  {invite.code}
-                </code>
-                <span className="text-sm text-muted-foreground">
-                  {invite.uses}
-                  {invite.maxUses !== null ? ` / ${invite.maxUses}` : ""} uses
-                </span>
+                <code className="font-mono text-sm tracking-wider">{invite.code}</code>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">
+                    {invite.uses}
+                    {invite.maxUses !== null ? ` / ${invite.maxUses}` : ""} uses
+                  </span>
+                  <CopyInviteLink code={invite.code} />
+                </div>
               </li>
             ))}
           </ul>

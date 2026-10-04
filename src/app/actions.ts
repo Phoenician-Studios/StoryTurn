@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { appUrl, isDemoMode } from "@/lib/config";
@@ -22,7 +23,9 @@ function authErrorRedirect(path: string, message: string): never {
 }
 
 export async function loginAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   if (!email.includes("@")) {
     authErrorRedirect("/login", "Enter a valid email");
   }
@@ -40,7 +43,9 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function signupAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const displayName =
     String(formData.get("displayName") ?? "").trim() || email.split("@")[0] || "Reader";
@@ -89,7 +94,9 @@ export async function googleLoginAction() {
 }
 
 export async function resetPasswordAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   if (!email.includes("@")) {
     authErrorRedirect("/reset-password", "Enter a valid email");
   }
@@ -134,6 +141,7 @@ export async function createFamilyAction(formData: FormData) {
 
 export async function joinFamilyAction(formData: FormData) {
   await joinFamily(String(formData.get("code") ?? ""));
+  (await cookies()).delete("storyturn-invite");
   revalidatePath("/");
   redirect("/");
 }
