@@ -6,6 +6,7 @@ import { cancelSessionAction, updateSessionAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { SessionBookPicker } from "@/components/session-book-picker";
 import { Badge } from "@/components/ui/badge";
+import { SessionStatusBadge } from "@/components/session-status";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,7 +53,7 @@ export default async function SessionPage({
         <BackLink href="/schedule" label="Back to schedule" />
         <section className="animate-rise">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{detail.session.status}</Badge>
+            <SessionStatusBadge status={detail.session.status} />
             {corrected && (
               <Badge className="bg-accent text-accent-foreground">Corrected</Badge>
             )}
