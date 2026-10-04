@@ -5,6 +5,7 @@ import { AppNav } from "@/components/app-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimezonePicker } from "@/components/timezone-picker";
 import {
   getCurrentMember,
   getCurrentUser,
@@ -88,14 +89,7 @@ export default async function SchedulePage() {
                   defaultValue={admin.schedule?.timeLocal ?? "19:30"}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Input
-                  id="timezone"
-                  name="timezone"
-                  defaultValue={admin.schedule?.timezone ?? "America/Los_Angeles"}
-                />
-              </div>
+              <TimezonePicker defaultValue={admin.schedule?.timezone} />
               <p className="text-sm text-muted-foreground sm:col-span-2">
                 Choose books before reading, log them afterward, or do both. You can
                 update each night’s book list at any time.

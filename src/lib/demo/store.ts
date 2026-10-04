@@ -1,3 +1,4 @@
+import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
 import {
   generateInviteCode,
@@ -257,6 +258,7 @@ export function saveSchedule(input: {
   if (member.role !== "owner") {
     throw new Error("Only family owners can edit the schedule");
   }
+  assertScheduleSettings(input);
   if (input.readerRotationMemberIds.length === 0) {
     throw new Error("Pick at least one reader");
   }
