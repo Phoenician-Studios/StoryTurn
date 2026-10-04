@@ -5,6 +5,7 @@ import {
   saveSchedule,
   getFamilySessionPage,
   getLibraryPage,
+  getSessionDetail,
 } from "@/lib/supabase/repository";
 type Row = Record<string, unknown>;
 const fixture = vi.hoisted(() => ({
@@ -342,4 +343,30 @@ it("searches and paginates the family library beyond the database row cap", asyn
     page: 1,
     items: [],
   });
+});
+
+it("loads only selected library books on the edit page while retaining full mutation context", async () => {
+  fixture.tables.reading_sessions = [
+    {
+      id: "night",
+      family_id: "family",
+      scheduled_for: "2026-10-04T19:30:00",
+      status: "scheduled",
+    },
+  ];
+  fixture.tables.session_books = [{ session_id: "night", book_id: "selected" }];
+  fixture.tables.books = [
+    { id: "selected", family_id: "family", title: "Selected" },
+    { id: "other", family_id: "family", title: "Other" },
+    { id: "foreign", family_id: "foreign", title: "Foreign" },
+  ];
+  expect((await getSessionDetail("night", true))?.library.map((book) => book.id)).toEqual(
+    ["selected"],
+  );
+  expect((await getSessionDetail("night"))?.library.map((book) => book.id)).toEqual([
+    "selected",
+    "other",
+  ]);
+  fixture.tables.session_books = [];
+  expect((await getSessionDetail("night", true))?.library).toEqual([]);
 });

@@ -92,3 +92,17 @@
 - **Gap:** Night generation locked a schedule before its family foreign-key check, while editing held an incompatible family lock before updating the schedule.
 - **Going forward:** Account for implicit foreign-key KEY SHARE locks alongside explicit row locks. Use NO KEY UPDATE when serializing edits that do not change parent keys, and verify overlapping transactions.
 - **Pointers:** `supabase/migrations/009_schedule_generation_lock.sql`, `manage_schedule`, `generate_schedule_night`
+
+### 2026-10-04 — Preserve mobile navigation before hydration
+
+- **Source:** PR #13 · Greptile
+- **Gap:** A collapsed, inert mobile menu made every navigation route depend on JavaScript. Resizing also retained expanded mobile state.
+- **Going forward:** Keep navigation links accessible in server HTML and test hydration fallback and breakpoint changes alongside toggle behavior.
+- **Pointers:** `src/components/app-nav.tsx`, `tests/app-nav.test.ts`
+
+### 2026-10-04 — Limit initial data for paginated pickers
+
+- **Source:** PR #13 · Greptile
+- **Gap:** The paginated book modal still fetched the full family library to render the session edit page.
+- **Going forward:** Query only selected records for the initial view while preserving the broader lookup needed by mutation audit history. Test both paths.
+- **Pointers:** `getSessionDetail`, `tests/supabase-repository.test.ts`

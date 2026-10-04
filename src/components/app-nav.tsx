@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { logoutAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 
@@ -13,10 +13,29 @@ const links = [
   { href: "/family", label: "Family" },
 ];
 
+const subscribeHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
+
 export function AppNav({ displayName }: { displayName: string }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    clientSnapshot,
+    serverSnapshot,
+  );
+  const expanded = !hydrated || open;
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) setOpen(false);
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
 
   return (
     <header
@@ -61,7 +80,7 @@ export function AppNav({ displayName }: { displayName: string }) {
             aria-expanded={open}
             aria-controls={menuId}
             onClick={() => setOpen(!open)}
-            className="flex size-11 items-center justify-center rounded-lg text-primary transition-colors hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:hidden"
+            className={`${hydrated ? "flex" : "hidden"} size-11 items-center justify-center rounded-lg text-primary transition-colors hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:hidden`}
           >
             <span aria-hidden="true" className="relative h-5 w-5">
               <span
@@ -79,9 +98,9 @@ export function AppNav({ displayName }: { displayName: string }) {
       </div>
       <div
         id={menuId}
-        inert={!open}
-        aria-hidden={!open}
-        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none md:hidden ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+        inert={!expanded}
+        aria-hidden={!expanded}
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none md:hidden ${expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
       >
         <div className="overflow-hidden">
           <nav

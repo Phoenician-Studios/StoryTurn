@@ -1,12 +1,31 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { renderToString } from "react-dom/server";
 import { AppNav } from "@/components/app-nav";
 
 vi.mock("@/app/actions", () => ({ logoutAction: vi.fn() }));
-afterEach(cleanup);
+let desktop = false;
+let change: (() => void) | undefined;
+beforeEach(() => {
+  desktop = false;
+  change = undefined;
+  vi.stubGlobal("matchMedia", () => ({
+    get matches() {
+      return desktop;
+    },
+    addEventListener: (_event: string, listener: () => void) => {
+      change = listener;
+    },
+    removeEventListener: vi.fn(),
+  }));
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 it("toggles mobile navigation and restores focus when Escape closes it", async () => {
   const user = userEvent.setup();
@@ -48,4 +67,29 @@ it("closes the mobile panel after selecting a destination", async () => {
   expect(
     screen.getByRole("button", { name: "Open navigation" }).getAttribute("aria-expanded"),
   ).toBe("false");
+});
+
+it("keeps mobile routes available in server HTML before hydration", () => {
+  const container = document.createElement("div");
+  container.innerHTML = renderToString(createElement(AppNav, { displayName: "Alex" }));
+  const nav = container.querySelector('[aria-label="Mobile navigation"]')!;
+  expect(nav.parentElement?.parentElement?.hasAttribute("inert")).toBe(false);
+  expect(nav.parentElement?.parentElement?.getAttribute("aria-hidden")).toBe("false");
+  expect([...nav.querySelectorAll("a")].map((link) => link.getAttribute("href"))).toEqual(
+    ["/", "/dashboard", "/library", "/schedule", "/family"],
+  );
+});
+it("closes an expanded mobile panel when desktop navigation appears", async () => {
+  const user = userEvent.setup();
+  render(createElement(AppNav, { displayName: "Alex" }));
+  const toggle = screen.getByRole("button", { name: "Open navigation" });
+  await user.click(toggle);
+  act(() => {
+    desktop = true;
+    change?.();
+  });
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(
+    document.getElementById(toggle.getAttribute("aria-controls")!)?.hasAttribute("inert"),
+  ).toBe(true);
 });

@@ -472,7 +472,7 @@ export function listFamilyAssignments() {
   return state().assignments.filter((row) => ids.has(row.sessionId));
 }
 
-export function getSessionDetail(sessionId: string) {
+export function getSessionDetail(sessionId: string, selectedLibraryOnly = false) {
   const member = getCurrentMember();
   if (!member) return null;
   const session = state().sessions.find(
@@ -487,7 +487,11 @@ export function getSessionDetail(sessionId: string) {
       .members.filter((m) => m.familyId === member.familyId)
       .map((m) => [m.id, m.displayName]),
   );
-  const library = state().books.filter((b) => b.familyId === member.familyId);
+  const library = state().books.filter(
+    (b) =>
+      b.familyId === member.familyId &&
+      (!selectedLibraryOnly || books.some((selected) => selected.bookId === b.id)),
+  );
   return {
     session,
     assignments,

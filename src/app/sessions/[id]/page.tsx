@@ -31,7 +31,7 @@ export default async function SessionPage({
   if (!member) redirect("/onboarding");
 
   const { id } = await params;
-  const detail = await getSessionDetail(id);
+  const detail = await getSessionDetail(id, true);
   if (!detail) redirect("/");
 
   const corrected = wasCorrected({
