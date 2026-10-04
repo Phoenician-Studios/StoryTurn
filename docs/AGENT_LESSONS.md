@@ -106,3 +106,10 @@
 - **Gap:** The paginated book modal still fetched the full family library to render the session edit page.
 - **Going forward:** Query only selected records for the initial view while preserving the broader lookup needed by mutation audit history. Test both paths.
 - **Pointers:** `getSessionDetail`, `tests/supabase-repository.test.ts`
+
+### 2026-10-04 — Preserve parallel queries in alternate read paths
+
+- **Source:** PR #13 · Greptile
+- **Gap:** Limiting the edit page's initial library fetch inadvertently serialized the full-library query used by saves and cancellations.
+- **Going forward:** Keep independent queries in the same Promise.all when adding a dependent optimized path. Test concurrency with a blocked dependency.
+- **Pointers:** `getSessionDetail`, `tests/supabase-repository.test.ts`

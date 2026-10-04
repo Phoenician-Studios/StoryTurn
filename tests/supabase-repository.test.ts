@@ -11,6 +11,7 @@ type Row = Record<string, unknown>;
 const fixture = vi.hoisted(() => ({
   tables: {} as Record<string, Row[]>,
   changes: [] as Row[],
+  beforeQuery: undefined as undefined | ((table: string) => Promise<void>),
   ranges: [] as { table: string; start: number; end: number }[],
 }));
 function client() {
@@ -137,7 +138,10 @@ function client() {
             data: head ? null : one ? (data.at(-1) ?? null) : data,
             count: matched.length,
             error: null,
-          }).then(resolve);
+          }).then(async (result) => {
+            await fixture.beforeQuery?.(table);
+            return resolve(result);
+          });
         },
       };
       return builder;
@@ -154,6 +158,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-05T02:00:00Z"));
   vi.clearAllMocks();
   fixture.changes = [];
+  fixture.beforeQuery = undefined;
   fixture.ranges = [];
   fixture.tables = {
     schedules: [
@@ -369,4 +374,34 @@ it("loads only selected library books on the edit page while retaining full muta
   ]);
   fixture.tables.session_books = [];
   expect((await getSessionDetail("night", true))?.library).toEqual([]);
+});
+
+it("starts the full library query while session books are still loading", async () => {
+  vi.useRealTimers();
+  fixture.tables.reading_sessions = [
+    {
+      id: "night",
+      family_id: "family",
+      scheduled_for: "2026-10-04T19:30:00",
+      status: "scheduled",
+    },
+  ];
+  fixture.tables.session_books = [];
+  fixture.tables.books = [];
+  let releaseBooks!: () => void;
+  const pendingBooks = new Promise<void>((resolve) => {
+    releaseBooks = resolve;
+  });
+  let libraryStarted = false;
+  fixture.beforeQuery = async (table) => {
+    if (table === "session_books") await pendingBooks;
+    if (table === "books") libraryStarted = true;
+  };
+  const detail = getSessionDetail("night");
+  try {
+    await vi.waitFor(() => expect(libraryStarted).toBe(true));
+  } finally {
+    releaseBooks();
+    await detail;
+  }
 });

@@ -369,7 +369,7 @@ export async function getSessionDetail(sessionId: string, selectedLibraryOnly = 
   assertNoError(error, "Could not load session");
   if (!data) return null;
 
-  const [assignments, books, corrections, readers] = await Promise.all([
+  const [assignments, books, corrections, readers, fullLibrary] = await Promise.all([
     rows(
       supabase.from("session_assignments").select("*").eq("session_id", sessionId),
       mapAssignment,
@@ -386,19 +386,25 @@ export async function getSessionDetail(sessionId: string, selectedLibraryOnly = 
       "Could not load corrections",
     ),
     familyReaders(supabase, member.familyId),
+    selectedLibraryOnly
+      ? Promise.resolve([])
+      : rows(
+          supabase.from("books").select("*").eq("family_id", member.familyId),
+          mapBook,
+          "Could not load library",
+        ),
   ]);
   const selectedIds = books.flatMap((book) => (book.bookId ? [book.bookId] : []));
-  const library =
-    selectedLibraryOnly && selectedIds.length === 0
+  const library = !selectedLibraryOnly
+    ? fullLibrary
+    : selectedIds.length === 0
       ? []
       : await rows(
-          selectedLibraryOnly
-            ? supabase
-                .from("books")
-                .select("*")
-                .eq("family_id", member.familyId)
-                .in("id", selectedIds)
-            : supabase.from("books").select("*").eq("family_id", member.familyId),
+          supabase
+            .from("books")
+            .select("*")
+            .eq("family_id", member.familyId)
+            .in("id", selectedIds),
           mapBook,
           "Could not load library",
         );
