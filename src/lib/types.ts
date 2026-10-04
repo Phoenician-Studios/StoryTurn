@@ -39,6 +39,7 @@ export interface InviteCode {
   expiresAt: string | null;
   maxUses: number | null;
   uses: number;
+  role?: MemberRole;
   createdAt: string;
 }
 
@@ -147,6 +148,4 @@ export interface OutboundEmail {
   createdAt: string;
 }
 
-export type DashboardFilter =
-  | { type: "member"; memberId: string }
-  | { type: "family" };
+export type DashboardFilter = { type: "member"; memberId: string } | { type: "family" };

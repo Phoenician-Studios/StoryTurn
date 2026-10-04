@@ -80,8 +80,10 @@ export function mapInvite(row: Row): InviteCode {
     code: str(row, "code"),
     createdByMemberId: str(row, "created_by_member_id"),
     expiresAt: strOrNull(row, "expires_at"),
-    maxUses: row.max_uses === null || row.max_uses === undefined ? null : Number(row.max_uses),
+    maxUses:
+      row.max_uses === null || row.max_uses === undefined ? null : Number(row.max_uses),
     uses: Number(row.uses ?? 0),
+    role: str(row, "role") === "owner" ? "owner" : "reader",
     createdAt: str(row, "created_at"),
   };
 }

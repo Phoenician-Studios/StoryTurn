@@ -12,11 +12,7 @@ export interface GeneratedSessionDraft {
   icsUid: string;
 }
 
-function combineLocalDateTime(
-  date: string,
-  timeLocal: string,
-  timezone: string,
-): string {
+function combineLocalDateTime(date: string, timeLocal: string, timezone: string): string {
   // Store as ISO-like local wall time with timezone label for display;
   // ICS builder interprets date + time + timezone explicitly.
   void timezone;
@@ -39,6 +35,7 @@ export function generateSessionsFromSchedule(params: {
 
   const drafts: GeneratedSessionDraft[] = [];
   let cursor = schedule.startDate;
+  if (params.nowDate && cursor < params.nowDate) cursor = params.nowDate;
 
   while (cursor <= throughDate) {
     if (!existingSessionDates.has(cursor)) {
@@ -48,11 +45,7 @@ export function generateSessionsFromSchedule(params: {
         cursor,
       );
       drafts.push({
-        scheduledFor: combineLocalDateTime(
-          cursor,
-          schedule.timeLocal,
-          schedule.timezone,
-        ),
+        scheduledFor: combineLocalDateTime(cursor, schedule.timeLocal, schedule.timezone),
         memberId,
         icsUid: buildIcsUid(schedule.familyId, cursor),
       });
@@ -111,10 +104,7 @@ export function nextSessionForMember(params: {
   return upcoming[0] ?? null;
 }
 
-export function assertTransition(
-  from: SessionStatus,
-  to: SessionStatus,
-): void {
+export function assertTransition(from: SessionStatus, to: SessionStatus): void {
   if (from === to) return;
   if (from === "cancelled" && to !== "cancelled") {
     throw new Error("Cancelled sessions cannot be reopened in v1");

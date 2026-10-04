@@ -1,5 +1,9 @@
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
-import { generateInviteCode, isInviteUsable, normalizeInviteCode } from "@/lib/domain/invites";
+import {
+  generateInviteCode,
+  isInviteUsable,
+  normalizeInviteCode,
+} from "@/lib/domain/invites";
 import {
   assertTransition,
   generateSessionsFromSchedule,
@@ -8,7 +12,7 @@ import {
   sessionDateKey,
 } from "@/lib/domain/sessions";
 import { computeDashboardStats } from "@/lib/domain/stats";
-import { addDays, formatDateOnly } from "@/lib/domain/rotation";
+import { addDays, formatDateOnly, readerForDate } from "@/lib/domain/rotation";
 import { createSeedState } from "@/lib/demo/seed";
 import { sendSessionInviteEmail } from "@/lib/session-mail";
 import type {
@@ -132,9 +136,7 @@ export function joinFamily(codeRaw: string): void {
   if (getCurrentMember()) throw new Error("Already in a family");
 
   const code = normalizeInviteCode(codeRaw);
-  const invite = state().invites.find(
-    (i) => normalizeInviteCode(i.code) === code,
-  );
+  const invite = state().invites.find((i) => normalizeInviteCode(i.code) === code);
   if (!invite) throw new Error("Invalid invite code");
 
   const usable = isInviteUsable({
@@ -153,14 +155,15 @@ export function joinFamily(codeRaw: string): void {
     userId: user.id,
     displayName: user.displayName,
     email: user.email,
-    role: "reader",
+    role: invite.role ?? "reader",
     createdAt: new Date().toISOString(),
   });
 }
 
 export function addKid(name: string, age: number): Kid {
-  const member = getCurrentMember();
-  if (!member) throw new Error("Join a family first");
+  const member = requireDemoOwner();
+  if (!name.trim() || !Number.isInteger(age) || age < 0 || age > 18)
+    throw new Error("Enter a name and age from 0 to 18");
   const kid: Kid = {
     id: id("kid"),
     familyId: member.familyId,
@@ -214,6 +217,7 @@ export function ensureUpcomingSessions(daysAhead = 14): number {
       schedule,
       existingSessionDates: existing,
       throughDate: through,
+      nowDate: today,
     });
     for (const draft of drafts) {
       const sessionId = id("ses");
@@ -257,13 +261,47 @@ export function saveSchedule(input: {
     throw new Error("Pick at least one reader");
   }
 
-  const existing = state().schedules.find(
-    (s) => s.familyId === member.familyId && s.active,
-  );
-  if (existing) {
-    existing.active = false;
+  if (
+    input.readerRotationMemberIds.some(
+      (readerId) =>
+        !state().members.some((r) => r.id === readerId && r.familyId === member.familyId),
+    )
+  ) {
+    throw new Error("Invalid reader in rotation");
   }
-
+  const existing =
+    state().schedules.find((s) => s.familyId === member.familyId && s.active) ??
+    state().schedules.find((s) => s.familyId === member.familyId);
+  if (existing) {
+    const restoring = !existing.active;
+    Object.assign(existing, input, { active: true });
+    for (const session of state().sessions.filter(
+      (s) =>
+        s.scheduleId === existing.id &&
+        (s.status === "scheduled" || (restoring && s.status === "cancelled")) &&
+        !isPastSession(s.scheduledFor),
+    )) {
+      const day = sessionDateKey(session.scheduledFor);
+      if (day < input.startDate) {
+        session.status = "cancelled";
+        void sendSessionInvite(session.id, "CANCEL");
+      } else {
+        session.status = "scheduled";
+        session.scheduledFor = `${day}T${input.timeLocal}:00`;
+        state().assignments = applyReassignment({
+          existing: state().assignments,
+          sessionId: session.id,
+          newMemberIds: [
+            readerForDate(input.readerRotationMemberIds, input.startDate, day),
+          ],
+        });
+        void sendSessionInvite(session.id, "REQUEST");
+      }
+      session.updatedAt = new Date().toISOString();
+    }
+    ensureUpcomingSessions(14);
+    return;
+  }
   state().schedules.push({
     id: id("sch"),
     familyId: member.familyId,
@@ -533,20 +571,18 @@ export function getFamilyAdmin() {
     readers: state().members.filter((m) => m.familyId === member.familyId),
     kids: state().kids.filter((k) => k.familyId === member.familyId),
     invites: state().invites.filter((i) => i.familyId === member.familyId),
-    schedule: state().schedules.find(
-      (s) => s.familyId === member.familyId && s.active,
-    ),
+    schedule: state().schedules.find((s) => s.familyId === member.familyId && s.active),
   };
 }
 
-export function createInviteCode(): string {
-  const member = getCurrentMember();
-  if (!member) throw new Error("Not signed in");
+export function createInviteCode(role: "owner" | "reader" = "reader"): string {
+  const member = requireDemoOwner();
   const code = generateInviteCode();
   state().invites.push({
     id: id("inv"),
     familyId: member.familyId,
     code,
+    role,
     createdByMemberId: member.id,
     expiresAt: null,
     maxUses: 25,
@@ -554,4 +590,66 @@ export function createInviteCode(): string {
     createdAt: new Date().toISOString(),
   });
   return code;
+}
+
+function requireDemoOwner(): FamilyMember {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Not signed in");
+  if (member.role !== "owner")
+    throw new Error("Only family owners can manage the family");
+  return member;
+}
+
+export async function deleteSchedule(): Promise<void> {
+  const member = requireDemoOwner();
+  for (const schedule of state().schedules.filter(
+    (s) => s.familyId === member.familyId && s.active,
+  )) {
+    schedule.active = false;
+    for (const session of state().sessions.filter(
+      (s) =>
+        s.scheduleId === schedule.id &&
+        s.status === "scheduled" &&
+        !isPastSession(s.scheduledFor),
+    )) {
+      await cancelSession(session.id);
+    }
+  }
+}
+
+export function updateMember(
+  memberId: string,
+  displayName: string,
+  role: "owner" | "reader",
+): void {
+  const owner = requireDemoOwner();
+  const target = state().members.find(
+    (m) => m.id === memberId && m.familyId === owner.familyId,
+  );
+  if (!target) throw new Error("Reader not found");
+  if (!displayName.trim()) throw new Error("Name is required");
+  if (
+    target.role === "owner" &&
+    role !== "owner" &&
+    state().members.filter((m) => m.familyId === owner.familyId && m.role === "owner")
+      .length === 1
+  )
+    throw new Error("Cannot demote the last parent");
+  Object.assign(target, { displayName: displayName.trim(), role });
+}
+
+export function updateKid(kidId: string, name: string, age: number): void {
+  const owner = requireDemoOwner();
+  const kid = state().kids.find((k) => k.id === kidId && k.familyId === owner.familyId);
+  if (!kid) throw new Error("Child not found");
+  if (!name.trim() || !Number.isInteger(age) || age < 0 || age > 18)
+    throw new Error("Enter a name and age from 0 to 18");
+  Object.assign(kid, { name: name.trim(), age });
+}
+
+export function deleteKid(kidId: string): void {
+  const owner = requireDemoOwner();
+  const kid = state().kids.find((k) => k.id === kidId && k.familyId === owner.familyId);
+  if (!kid) throw new Error("Child not found");
+  state().kids = state().kids.filter((k) => k.id !== kid.id);
 }

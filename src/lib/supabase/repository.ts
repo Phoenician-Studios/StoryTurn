@@ -71,7 +71,11 @@ async function loadContext(client?: SupabaseClient) {
     error,
   } = await supabase.auth.getUser();
   if (error || !user) {
-    return { supabase, account: null as UserAccount | null, member: null as FamilyMember | null };
+    return {
+      supabase,
+      account: null as UserAccount | null,
+      member: null as FamilyMember | null,
+    };
   }
   const account = userFromAuth(user);
   const { data, error: memberError } = await supabase
@@ -201,22 +205,25 @@ export async function getHomeContext() {
 
   const [sessionBooks, corrections, books] = nextSession
     ? await Promise.all([
-      rows(
-        supabase.from("session_books").select("*").eq("session_id", nextSession.id),
-        mapSessionBook,
-        "Could not load session books",
-      ),
-      rows(
-        supabase.from("session_corrections").select("*").eq("session_id", nextSession.id),
-        mapCorrection,
-        "Could not load corrections",
-      ),
-      rows(
-        supabase.from("books").select("*").eq("family_id", member.familyId),
-        mapBook,
-        "Could not load books",
-      ),
-    ])
+        rows(
+          supabase.from("session_books").select("*").eq("session_id", nextSession.id),
+          mapSessionBook,
+          "Could not load session books",
+        ),
+        rows(
+          supabase
+            .from("session_corrections")
+            .select("*")
+            .eq("session_id", nextSession.id),
+          mapCorrection,
+          "Could not load corrections",
+        ),
+        rows(
+          supabase.from("books").select("*").eq("family_id", member.familyId),
+          mapBook,
+          "Could not load books",
+        ),
+      ])
     : [[], [], []];
 
   return {
@@ -312,10 +319,10 @@ export async function getDashboard(filter: DashboardFilter) {
     sessionIds.length === 0
       ? []
       : await rows(
-        supabase.from("session_books").select("*").in("session_id", sessionIds),
-        mapSessionBook,
-        "Could not load session books",
-      );
+          supabase.from("session_books").select("*").in("session_id", sessionIds),
+          mapSessionBook,
+          "Could not load session books",
+        );
   return {
     stats: computeDashboardStats({
       sessions,
@@ -371,7 +378,9 @@ export async function getSessionDetail(sessionId: string) {
     assignments,
     books,
     corrections,
-    memberNames: Object.fromEntries(readers.map((reader) => [reader.id, reader.displayName])),
+    memberNames: Object.fromEntries(
+      readers.map((reader) => [reader.id, reader.displayName]),
+    ),
     library,
     readers,
   };
@@ -448,6 +457,7 @@ async function insertGeneratedSessions(
       schedule,
       existingSessionDates: existing,
       throughDate: through,
+      nowDate: today,
     });
 
     for (const draft of drafts) {
@@ -464,12 +474,14 @@ async function insertGeneratedSessions(
         .single();
       assertNoError(error, "Could not create session");
       const sessionId = String((data as Row).id);
-      const { error: assignmentError } = await supabase.from("session_assignments").insert({
-        session_id: sessionId,
-        member_id: draft.memberId,
-        is_original: true,
-        is_current: true,
-      });
+      const { error: assignmentError } = await supabase
+        .from("session_assignments")
+        .insert({
+          session_id: sessionId,
+          member_id: draft.memberId,
+          is_original: true,
+          is_current: true,
+        });
       assertNoError(assignmentError, "Could not assign reader");
       await sendInvite(supabase, sessionId, "REQUEST");
       created += 1;
@@ -505,6 +517,7 @@ export async function createFamily(name: string): Promise<void> {
   const { error: inviteError } = await ctx.supabase.from("invite_codes").insert({
     family_id: member.familyId,
     code,
+    role: "reader",
     created_by_member_id: member.id,
     max_uses: 25,
     uses: 0,
@@ -526,6 +539,8 @@ export async function joinFamily(codeRaw: string): Promise<void> {
 export async function addKid(name: string, age: number): Promise<void> {
   const { supabase, member } = requireMember(await loadContext());
   requireOwner(member);
+  if (!name.trim() || !Number.isInteger(age) || age < 0 || age > 18)
+    throw new Error("Enter a name and age from 0 to 18");
   const { error } = await supabase.from("kids").insert({
     family_id: member.familyId,
     name: name.trim(),
@@ -534,13 +549,16 @@ export async function addKid(name: string, age: number): Promise<void> {
   assertNoError(error, "Could not add kid");
 }
 
-export async function createInviteCode(): Promise<string> {
+export async function createInviteCode(
+  role: "owner" | "reader" = "reader",
+): Promise<string> {
   const { supabase, member } = requireMember(await loadContext());
   requireOwner(member);
   const code = generateInviteCode();
   const { error } = await supabase.from("invite_codes").insert({
     family_id: member.familyId,
     code,
+    role,
     created_by_member_id: member.id,
     max_uses: 25,
     uses: 0,
@@ -581,29 +599,24 @@ export async function saveSchedule(input: {
     throw new Error("Pick at least one reader");
   }
 
-  const { error: retireError } = await supabase
-    .from("schedules")
-    .update({ active: false })
-    .eq("family_id", member.familyId)
-    .eq("active", true);
-  assertNoError(retireError, "Could not retire the previous schedule");
-
-  const { data, error } = await supabase
-    .from("schedules")
-    .insert({
-      family_id: member.familyId,
-      mode: "together",
-      reader_rotation_member_ids: input.readerRotationMemberIds,
-      start_date: input.startDate,
-      time_local: input.timeLocal,
-      timezone: input.timezone,
-      book_timing: input.bookTiming,
-      active: true,
-    })
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("manage_schedule", {
+    rotation_ids: input.readerRotationMemberIds,
+    starts_on: input.startDate,
+    bedtime: input.timeLocal,
+    zone: input.timezone,
+    timing: input.bookTiming,
+    deleting: false,
+  });
   assertNoError(error, "Could not save schedule");
-  await insertGeneratedSessions(supabase, [mapSchedule(data as Row)], 14);
+  for (const changed of (data ?? []) as { session_id: string; cancelled: boolean }[]) {
+    await sendInvite(
+      supabase,
+      changed.session_id,
+      changed.cancelled ? "CANCEL" : "REQUEST",
+    );
+  }
+  const admin = await getFamilyAdmin();
+  if (admin.schedule) await insertGeneratedSessions(supabase, [admin.schedule], 14);
 }
 
 async function persistAssignments(
@@ -692,7 +705,12 @@ export async function updateSession(input: {
     .eq("id", input.sessionId);
   assertNoError(error, "Could not update session");
 
-  await persistAssignments(supabase, input.sessionId, detail.assignments, input.memberIds);
+  await persistAssignments(
+    supabase,
+    input.sessionId,
+    detail.assignments,
+    input.memberIds,
+  );
 
   const { error: clearError } = await supabase
     .from("session_books")
@@ -752,4 +770,56 @@ export async function updateSession(input: {
   } else if (!isPastSession(detail.session.scheduledFor)) {
     await sendInvite(supabase, input.sessionId, "REQUEST");
   }
+}
+
+export async function deleteSchedule(): Promise<void> {
+  const { supabase, member } = requireMember(await loadContext());
+  requireOwner(member);
+  const { data, error } = await supabase.rpc("manage_schedule", { deleting: true });
+  assertNoError(error, "Could not delete schedule");
+  for (const row of (data ?? []) as { session_id: string }[])
+    await sendInvite(supabase, row.session_id, "CANCEL");
+}
+
+export async function updateMember(
+  memberId: string,
+  displayName: string,
+  role: "owner" | "reader",
+): Promise<void> {
+  const { supabase, member } = requireMember(await loadContext());
+  requireOwner(member);
+  const { error } = await supabase.rpc("update_family_member", {
+    target_id: memberId,
+    new_name: displayName.trim(),
+    new_role: role,
+  });
+  assertNoError(error, "Could not update reader");
+}
+
+export async function updateKid(kidId: string, name: string, age: number): Promise<void> {
+  const { supabase, member } = requireMember(await loadContext());
+  requireOwner(member);
+  if (!name.trim() || !Number.isInteger(age) || age < 0 || age > 18)
+    throw new Error("Enter a name and age from 0 to 18");
+  const { data, error } = await supabase
+    .from("kids")
+    .update({ name: name.trim(), age })
+    .eq("id", kidId)
+    .eq("family_id", member.familyId)
+    .select("id");
+  assertNoError(error, "Could not update child");
+  if (!data?.length) throw new Error("Child not found");
+}
+
+export async function deleteKid(kidId: string): Promise<void> {
+  const { supabase, member } = requireMember(await loadContext());
+  requireOwner(member);
+  const { data, error } = await supabase
+    .from("kids")
+    .delete()
+    .eq("id", kidId)
+    .eq("family_id", member.familyId)
+    .select("id");
+  assertNoError(error, "Could not delete child");
+  if (!data?.length) throw new Error("Child not found");
 }

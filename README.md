@@ -60,7 +60,7 @@ npm run build
 See [`.env.example`](.env.example).
 
 1. Create a Supabase project; enable Email + Google providers and password recovery.
-2. Apply [`supabase/migrations/001_init.sql`](supabase/migrations/001_init.sql) and [`supabase/migrations/002_family_bootstrap.sql`](supabase/migrations/002_family_bootstrap.sql) in the SQL editor.
+2. Apply all files in `supabase/migrations/` in numeric order. Existing deployments must apply `003_family_management.sql` before using parent invitations or schedule management.
 3. Set the Supabase, Plunk, and QStash keys in `.env.local`, then set `FORCE_DEMO_MODE=0` to use the live database.
 4. Configure QStash to `POST /api/cron/generate-sessions` daily (or call with `x-cron-secret: $CRON_SECRET` locally).
 5. Deploy on Vercel. Production uses `https://www.storyturn.app` (`storyturn.app` redirects to `www`). Set `NEXT_PUBLIC_APP_URL` to that URL and `FORCE_DEMO_MODE=0`. Auth callbacks use `${NEXT_PUBLIC_APP_URL}/auth/callback`, which must be allowed in the Supabase redirect list.
