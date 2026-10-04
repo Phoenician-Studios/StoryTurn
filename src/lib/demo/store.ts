@@ -1,3 +1,4 @@
+import { paginateLibrary } from "@/lib/domain/library-page";
 import { paginateSessions } from "@/lib/domain/session-presentation";
 import {
   assertScheduleSettings,
@@ -471,7 +472,7 @@ export function listFamilyAssignments() {
   return state().assignments.filter((row) => ids.has(row.sessionId));
 }
 
-export function getSessionDetail(sessionId: string) {
+export function getSessionDetail(sessionId: string, selectedLibraryOnly = false) {
   const member = getCurrentMember();
   if (!member) return null;
   const session = state().sessions.find(
@@ -486,7 +487,11 @@ export function getSessionDetail(sessionId: string) {
       .members.filter((m) => m.familyId === member.familyId)
       .map((m) => [m.id, m.displayName]),
   );
-  const library = state().books.filter((b) => b.familyId === member.familyId);
+  const library = state().books.filter(
+    (b) =>
+      b.familyId === member.familyId &&
+      (!selectedLibraryOnly || books.some((selected) => selected.bookId === b.id)),
+  );
   return {
     session,
     assignments,
@@ -730,4 +735,10 @@ export function getFamilySessionPage(requestedPage?: string | string[]) {
     (a) => ids.has(a.sessionId) && a.isCurrent,
   );
   return { ...pagination, assignments };
+}
+
+export function getLibraryPage(query: string, page = 1) {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Sign in to choose library books");
+  return paginateLibrary(getLibrary(), query, page);
 }

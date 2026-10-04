@@ -15,5 +15,9 @@ export function SessionStatusBadge({
   status: SessionStatus;
   className?: string;
 }) {
-  return <Badge className={cn(colors[status], className)}>{status}</Badge>;
+  return (
+    <Badge className={cn(colors[status], className)}>
+      {status[0].toUpperCase() + status.slice(1)}
+    </Badge>
+  );
 }

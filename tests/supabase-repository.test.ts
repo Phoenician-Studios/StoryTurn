@@ -4,11 +4,14 @@ import {
   ensureAllUpcomingSessions,
   saveSchedule,
   getFamilySessionPage,
+  getLibraryPage,
+  getSessionDetail,
 } from "@/lib/supabase/repository";
 type Row = Record<string, unknown>;
 const fixture = vi.hoisted(() => ({
   tables: {} as Record<string, Row[]>,
   changes: [] as Row[],
+  beforeQuery: undefined as undefined | ((table: string) => Promise<void>),
   ranges: [] as { table: string; start: number; end: number }[],
 }));
 function client() {
@@ -73,6 +76,14 @@ function client() {
           filters.push((r) => r[key] === value);
           return builder;
         },
+        ilike: (key: string, pattern: string) => {
+          const term = pattern
+            .slice(1, -1)
+            .replace(/\\([\\%_])/g, "$1")
+            .toLowerCase();
+          filters.push((row) => String(row[key]).toLowerCase().includes(term));
+          return builder;
+        },
         in: (key: string, values: unknown[]) => {
           filters.push((r) => values.includes(r[key]));
           return builder;
@@ -127,7 +138,10 @@ function client() {
             data: head ? null : one ? (data.at(-1) ?? null) : data,
             count: matched.length,
             error: null,
-          }).then(resolve);
+          }).then(async (result) => {
+            await fixture.beforeQuery?.(table);
+            return resolve(result);
+          });
         },
       };
       return builder;
@@ -144,6 +158,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-05T02:00:00Z"));
   vi.clearAllMocks();
   fixture.changes = [];
+  fixture.beforeQuery = undefined;
   fixture.ranges = [];
   fixture.tables = {
     schedules: [
@@ -301,4 +316,92 @@ it("assigns only family library books to generated nights and keeps them on repe
   const assigned = [...fixture.tables.session_books];
   expect(await ensureAllUpcomingSessions(1)).toBe(0);
   expect(fixture.tables.session_books).toEqual(assigned);
+});
+
+it("searches and paginates the family library beyond the database row cap", async () => {
+  fixture.tables.books = Array.from({ length: 1005 }, (_, i) => ({
+    id: `book-${String(i).padStart(4, "0")}`,
+    family_id: "family",
+    title: `Story ${String(i).padStart(4, "0")}`,
+  }));
+  fixture.tables.books.push({
+    id: "other",
+    family_id: "other-family",
+    title: "Story 1004",
+  });
+  const last = await getLibraryPage("Story", 101);
+  expect(last).toMatchObject({ page: 101, pageCount: 101, total: 1005 });
+  expect(last.items.map((book) => book.id)).toEqual([
+    "book-1000",
+    "book-1001",
+    "book-1002",
+    "book-1003",
+    "book-1004",
+  ]);
+  expect(await getLibraryPage("1004", 99)).toMatchObject({
+    total: 1,
+    page: 1,
+    items: [{ id: "book-1004" }],
+  });
+  expect(await getLibraryPage("missing", 2)).toMatchObject({
+    total: 0,
+    page: 1,
+    items: [],
+  });
+});
+
+it("loads only selected library books on the edit page while retaining full mutation context", async () => {
+  fixture.tables.reading_sessions = [
+    {
+      id: "night",
+      family_id: "family",
+      scheduled_for: "2026-10-04T19:30:00",
+      status: "scheduled",
+    },
+  ];
+  fixture.tables.session_books = [{ session_id: "night", book_id: "selected" }];
+  fixture.tables.books = [
+    { id: "selected", family_id: "family", title: "Selected" },
+    { id: "other", family_id: "family", title: "Other" },
+    { id: "foreign", family_id: "foreign", title: "Foreign" },
+  ];
+  expect((await getSessionDetail("night", true))?.library.map((book) => book.id)).toEqual(
+    ["selected"],
+  );
+  expect((await getSessionDetail("night"))?.library.map((book) => book.id)).toEqual([
+    "selected",
+    "other",
+  ]);
+  fixture.tables.session_books = [];
+  expect((await getSessionDetail("night", true))?.library).toEqual([]);
+});
+
+it("starts the full library query while session books are still loading", async () => {
+  vi.useRealTimers();
+  fixture.tables.reading_sessions = [
+    {
+      id: "night",
+      family_id: "family",
+      scheduled_for: "2026-10-04T19:30:00",
+      status: "scheduled",
+    },
+  ];
+  fixture.tables.session_books = [];
+  fixture.tables.books = [];
+  let releaseBooks!: () => void;
+  const pendingBooks = new Promise<void>((resolve) => {
+    releaseBooks = resolve;
+  });
+  let libraryStarted = false;
+  fixture.beforeQuery = async (table) => {
+    if (table === "session_books") await pendingBooks;
+    if (table === "books") libraryStarted = true;
+  };
+  const detail = getSessionDetail("night");
+  try {
+    await vi.waitFor(() => expect(libraryStarted).toBe(true));
+  } finally {
+    releaseBooks();
+    await detail;
+  }
 });

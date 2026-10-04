@@ -30,7 +30,7 @@ export function upcomingSessionDay(
   const day = sessionDateKey(scheduledFor);
   if (day === today) return "Tonight";
   if (day === addDays(today, 1)) return "Tomorrow";
-  return day;
+  return formatSessionDate(scheduledFor);
 }
 
 export function formatSessionDate(scheduledFor: string): string {

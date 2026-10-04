@@ -35,10 +35,10 @@ export async function getDashboard(filter: DashboardFilter) {
   return isDemoMode() ? demo.getDashboard(filter) : live.getDashboard(filter);
 }
 
-export async function getSessionDetail(sessionId: string) {
+export async function getSessionDetail(sessionId: string, selectedLibraryOnly = false) {
   return isDemoMode()
-    ? demo.getSessionDetail(sessionId)
-    : live.getSessionDetail(sessionId);
+    ? demo.getSessionDetail(sessionId, selectedLibraryOnly)
+    : live.getSessionDetail(sessionId, selectedLibraryOnly);
 }
 
 export async function createFamily(name: string) {
@@ -124,4 +124,10 @@ export async function getFamilySessionPage(requestedPage?: string | string[]) {
   return isDemoMode()
     ? demo.getFamilySessionPage(requestedPage)
     : live.getFamilySessionPage(requestedPage);
+}
+
+export async function getLibraryPage(query: string, page = 1) {
+  return isDemoMode()
+    ? demo.getLibraryPage(query, page)
+    : live.getLibraryPage(query, page);
 }

@@ -15,7 +15,8 @@ import {
   originalReaderLabels,
   wasCorrected,
 } from "@/lib/domain/corrections";
-import { isPastSession, sessionDateKey } from "@/lib/domain/sessions";
+import { isPastSession } from "@/lib/domain/sessions";
+import { formatSessionDate } from "@/lib/domain/session-presentation";
 import { getCurrentMember, getCurrentUser, getSessionDetail } from "@/lib/data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -30,7 +31,7 @@ export default async function SessionPage({
   if (!member) redirect("/onboarding");
 
   const { id } = await params;
-  const detail = await getSessionDetail(id);
+  const detail = await getSessionDetail(id, true);
   if (!detail) redirect("/");
 
   const corrected = wasCorrected({
@@ -49,8 +50,8 @@ export default async function SessionPage({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <AppNav displayName={member.displayName} />
-      <main className="mx-auto w-full max-w-3xl px-4 py-8">
-        <BackLink href="/schedule" label="Back to schedule" />
+      <main className="mx-auto w-full max-w-3xl px-4 pb-8 pt-3">
+        <BackLink compact />
         <section className="animate-rise">
           <div className="flex flex-wrap items-center gap-2">
             <SessionStatusBadge status={detail.session.status} />
@@ -59,7 +60,7 @@ export default async function SessionPage({
             )}
           </div>
           <h1 className="font-display mt-3 text-3xl text-primary">
-            {sessionDateKey(detail.session.scheduledFor)} ·{" "}
+            {formatSessionDate(detail.session.scheduledFor)} ·{" "}
             {detail.session.scheduledFor.slice(11, 16)}
           </h1>
           <p className="mt-2 text-muted-foreground">
@@ -93,7 +94,13 @@ export default async function SessionPage({
               <div key={c.id} className="story-panel rounded-xl p-4 text-sm">
                 <p className="font-medium">{c.reason}</p>
                 <p className="mt-1 text-muted-foreground">
-                  {new Date(c.createdAt).toLocaleString()}
+                  {formatSessionDate(c.createdAt)} ·{" "}
+                  {new Date(c.createdAt).toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    timeZone: "UTC",
+                  })}{" "}
+                  UTC
                 </p>
               </div>
             ))}
@@ -136,7 +143,9 @@ export default async function SessionPage({
             </p>
             <SessionBookPicker
               key={detail.session.id}
-              books={detail.library.map(({ id, title }) => ({ id, title }))}
+              books={detail.library
+                .filter((book) => selectedBookIds.has(book.id))
+                .map(({ id, title, coverUrl }) => ({ id, title, coverUrl }))}
               selectedIds={[...selectedBookIds]}
             />
           </div>
@@ -153,10 +162,21 @@ export default async function SessionPage({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea id="notes" name="notes" defaultValue={detail.session.notes ?? ""} />
-          </div>
+          <details className="rounded-lg border border-border">
+            <summary className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring">
+              Notes{detail.session.notes ? " · saved" : ""}
+            </summary>
+            <div className="space-y-2 px-3 pb-3">
+              <Label htmlFor="notes" className="sr-only">
+                Notes
+              </Label>
+              <Textarea
+                id="notes"
+                name="notes"
+                defaultValue={detail.session.notes ?? ""}
+              />
+            </div>
+          </details>
 
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>

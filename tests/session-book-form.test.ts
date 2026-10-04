@@ -30,13 +30,18 @@ it("submits retained planned books through the actual session form and server ac
   });
   render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
   const user = userEvent.setup();
-  await user.click(screen.getByText(/Books from library ·/));
+  await user.click(screen.getByRole("button", { name: "Add books from library" }));
   expect(
-    (screen.getByRole("checkbox", { name: "Goodnight Moon" }) as HTMLInputElement)
-      .checked,
-  ).toBe(true);
-  await user.click(screen.getByRole("checkbox", { name: "The Very Hungry Caterpillar" }));
-  await user.click(screen.getByText(/Books from library ·/));
+    (
+      (await screen.findByRole("button", {
+        name: "Goodnight Moon",
+      })) as HTMLInputElement
+    ).getAttribute("aria-pressed"),
+  ).toBe("true");
+  await user.click(
+    await screen.findByRole("button", { name: "The Very Hungry Caterpillar" }),
+  );
+  await user.click(screen.getByRole("button", { name: /Done ·/ }));
   await user.type(
     screen.getByLabelText("Other book titles (one per line)"),
     "\nOne more story",
@@ -52,7 +57,7 @@ it("submits retained planned books through the actual session form and server ac
   ).toEqual(["book_moon", "book_hungry", "Planned story", "One more story"]);
 });
 
-it("removes an initially selected book when saved with the dropdown closed", async () => {
+it("removes an initially selected book when saved with the modal closed", async () => {
   const night = store.getHomeContext().nextSession!;
   await store.updateSession({
     sessionId: night.id,
@@ -64,15 +69,15 @@ it("removes an initially selected book when saved with the dropdown closed", asy
   });
   const view = render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
   const user = userEvent.setup();
-  await user.click(screen.getByText(/Books from library ·/));
-  const moon = screen.getByRole("checkbox", {
+  await user.click(screen.getByRole("button", { name: "Add books from library" }));
+  const moon = (await screen.findByRole("button", {
     name: "Goodnight Moon",
-  }) as HTMLInputElement;
-  expect(moon.checked).toBe(true);
+  })) as HTMLInputElement;
+  expect(moon.getAttribute("aria-pressed")).toBe("true");
   await user.click(moon);
-  expect(moon.checked).toBe(false);
-  await user.click(screen.getByText(/Books from library ·/));
-  expect(moon.closest("details")?.open).toBe(false);
+  expect(moon.getAttribute("aria-pressed")).toBe("false");
+  await user.click(screen.getByRole("button", { name: /Done ·/ }));
+  expect(screen.queryByRole("dialog")).toBeNull();
   await user.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() =>
     expect(
@@ -82,16 +87,19 @@ it("removes an initially selected book when saved with the dropdown closed", asy
 
   view.unmount();
   render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
-  await user.click(screen.getByText(/Books from library ·/));
-  expect(
-    (screen.getByRole("checkbox", { name: "Goodnight Moon" }) as HTMLInputElement)
-      .checked,
-  ).toBe(false);
+  await user.click(screen.getByRole("button", { name: "Add books from library" }));
   expect(
     (
-      screen.getByRole("checkbox", {
+      (await screen.findByRole("button", {
+        name: "Goodnight Moon",
+      })) as HTMLInputElement
+    ).getAttribute("aria-pressed"),
+  ).toBe("false");
+  expect(
+    (
+      screen.getByRole("button", {
         name: "The Very Hungry Caterpillar",
       }) as HTMLInputElement
-    ).checked,
-  ).toBe(true);
+    ).getAttribute("aria-pressed"),
+  ).toBe("true");
 });
