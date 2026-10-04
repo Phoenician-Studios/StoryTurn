@@ -1,11 +1,12 @@
 import { BackLink } from "@/components/back-link";
-import { NativeSelect } from "@/components/ui/native-select";
+import { FormSelect } from "@/components/form-select";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { cancelSessionAction, updateSessionAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { SessionBookPicker } from "@/components/session-book-picker";
 import { Badge } from "@/components/ui/badge";
+import { SessionStatusBadge } from "@/components/session-status";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,7 +53,7 @@ export default async function SessionPage({
         <BackLink href="/schedule" label="Back to schedule" />
         <section className="animate-rise">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{detail.session.status}</Badge>
+            <SessionStatusBadge status={detail.session.status} />
             {corrected && (
               <Badge className="bg-accent text-accent-foreground">Corrected</Badge>
             )}
@@ -159,11 +160,16 @@ export default async function SessionPage({
 
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <NativeSelect id="status" name="status" defaultValue={detail.session.status}>
-              <option value="scheduled">Scheduled</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </NativeSelect>
+            <FormSelect
+              id="status"
+              name="status"
+              defaultValue={detail.session.status}
+              options={[
+                { value: "scheduled", label: "Scheduled" },
+                { value: "completed", label: "Completed" },
+                { value: "cancelled", label: "Cancelled" },
+              ]}
+            />
           </div>
 
           {(past || detail.session.status === "completed") && (

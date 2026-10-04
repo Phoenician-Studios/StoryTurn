@@ -55,3 +55,19 @@ it("uses calendar days across month, year, and daylight-saving transitions", () 
     ),
   ).toBe("Tonight");
 });
+
+it("formats wall dates and bounds numbered navigation", async () => {
+  const { formatSessionDate, sessionPageNumbers } =
+    await import("@/lib/domain/session-presentation");
+  expect(formatSessionDate("2025-07-17T00:30:00")).toBe("Thursday, Jul 17");
+  expect(sessionPageNumbers(1, 1)).toEqual([1]);
+  expect(sessionPageNumbers(50, 101)).toEqual([
+    1,
+    "ellipsis",
+    49,
+    50,
+    51,
+    "ellipsis",
+    101,
+  ]);
+});

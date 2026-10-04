@@ -1,5 +1,5 @@
 import { BackLink } from "@/components/back-link";
-import { NativeSelect } from "@/components/ui/native-select";
+import { FormSelect } from "@/components/form-select";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import {
@@ -53,7 +53,7 @@ export default async function FamilyPage({
           </p>
         )}
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <div className="mt-6 grid items-start gap-6 xl:grid-cols-2">
           <section className="story-panel rounded-2xl p-5 animate-rise-delay">
             <h2 className="font-display text-xl">Readers</h2>
             <ul className="mt-4 space-y-2">
@@ -84,17 +84,28 @@ export default async function FamilyPage({
                           className="min-h-11 text-base sm:text-sm"
                         />
                       </label>
-                      <label className="min-w-0 space-y-2 text-sm">
-                        Access
-                        <NativeSelect
-                          name="role"
-                          aria-label={`Access for ${reader.displayName}`}
-                          defaultValue={reader.role}
-                        >
-                          <option value="owner">Parent (can manage family)</option>
-                          <option value="reader">Reader</option>
-                        </NativeSelect>
-                      </label>
+                      {reader.id === member.id ? (
+                        <div className="text-sm">
+                          <span>Access</span>
+                          <p className="flex min-h-11 items-center text-muted-foreground">
+                            Parent (you)
+                          </p>
+                          <input type="hidden" name="role" value={reader.role} />
+                        </div>
+                      ) : (
+                        <label className="min-w-0 space-y-2 text-sm">
+                          Access
+                          <FormSelect
+                            name="role"
+                            aria-label={`Access for ${reader.displayName}`}
+                            defaultValue={reader.role}
+                            options={[
+                              { value: "owner", label: "Parent (can manage family)" },
+                              { value: "reader", label: "Reader" },
+                            ]}
+                          />
+                        </label>
+                      )}
                       <Button
                         type="submit"
                         variant="outline"
@@ -210,10 +221,15 @@ export default async function FamilyPage({
               >
                 <label className="text-sm">
                   Invite as
-                  <NativeSelect name="role" defaultValue="reader">
-                    <option value="reader">Reader</option>
-                    <option value="owner">Parent (can manage family)</option>
-                  </NativeSelect>
+                  <FormSelect
+                    name="role"
+                    defaultValue="reader"
+                    aria-label="Invite as"
+                    options={[
+                      { value: "reader", label: "Reader" },
+                      { value: "owner", label: "Parent (can manage family)" },
+                    ]}
+                  />
                 </label>
                 <Button type="submit" variant="secondary">
                   Generate code

@@ -36,7 +36,9 @@ it("marks existing books and shows pending and success states when adding", asyn
       }),
   );
   render(createElement(BookSearch, { collectionKeys: ["/works/existing"] }));
-  fireEvent.click(screen.getByRole("button", { name: "Search Open Library" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Search books" }), {
+    target: { value: "story" },
+  });
   await screen.findByRole("button", { name: "In collection" });
   expect(
     (screen.getByRole("button", { name: "In collection" }) as HTMLButtonElement).disabled,
@@ -63,7 +65,9 @@ it("keeps failed additions available to retry", async () => {
   ]);
   vi.mocked(addBookAction).mockRejectedValue(new Error("Failure"));
   render(createElement(BookSearch, { collectionKeys: [] }));
-  fireEvent.click(screen.getByRole("button", { name: "Search Open Library" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Search books" }), {
+    target: { value: "story" },
+  });
   fireEvent.click(await screen.findByRole("button", { name: "Add to library" }));
   await screen.findByText("Could not add book. Please try again.");
   expect(
@@ -85,4 +89,88 @@ it("copies a full invite URL and reports clipboard failures", async () => {
   writeText.mockRejectedValue(new Error("Denied"));
   fireEvent.click(screen.getByRole("button", { name: "Copied!" }));
   await screen.findByText("Could not copy. Please try again.");
+});
+
+it("debounces typing and ignores stale responses after clearing the input", async () => {
+  vi.useFakeTimers();
+  vi.mocked(searchBooksAction).mockClear();
+  let resolve!: (books: Awaited<ReturnType<typeof searchBooksAction>>) => void;
+  vi.mocked(searchBooksAction).mockImplementation(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  try {
+    render(createElement(BookSearch, { collectionKeys: [] }));
+    const input = screen.getByRole("textbox", { name: "Search books" });
+    fireEvent.change(input, { target: { value: "cat" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    fireEvent.change(input, { target: { value: "cats" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(349);
+    });
+    expect(searchBooksAction).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(searchBooksAction).toHaveBeenCalledExactlyOnceWith("cats");
+    expect(screen.getByRole("status").textContent).toBe("Searching…");
+    fireEvent.change(input, { target: { value: "" } });
+    await act(async () => {
+      resolve([
+        {
+          openLibraryKey: "/works/stale",
+          title: "Stale",
+          authors: [],
+          coverUrl: null,
+          isbn: null,
+          year: null,
+        },
+      ]);
+    });
+    expect(screen.queryByText("Stale")).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+    expect(searchBooksAction).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("skips short searches and displays errors after loading", async () => {
+  vi.useFakeTimers();
+  vi.mocked(searchBooksAction).mockClear();
+  let reject!: (error: Error) => void;
+  vi.mocked(searchBooksAction).mockImplementation(
+    () =>
+      new Promise((_, fail) => {
+        reject = fail;
+      }),
+  );
+  try {
+    render(createElement(BookSearch, { collectionKeys: [] }));
+    const input = screen.getByRole("textbox", { name: "Search books" });
+    fireEvent.change(input, { target: { value: " a " } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+    expect(searchBooksAction).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: " ab " } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+    expect(searchBooksAction).toHaveBeenCalledExactlyOnceWith("ab");
+    expect(screen.getByRole("status").textContent).toBe("Searching…");
+    await act(async () => {
+      reject(new Error("Search service unavailable"));
+    });
+    expect(screen.getByText("Search service unavailable")).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
 });

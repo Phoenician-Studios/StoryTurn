@@ -32,3 +32,30 @@ export function upcomingSessionDay(
   if (day === addDays(today, 1)) return "Tomorrow";
   return day;
 }
+
+export function formatSessionDate(scheduledFor: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${sessionDateKey(scheduledFor)}T12:00:00Z`));
+}
+
+export function sessionPageNumbers(
+  page: number,
+  pageCount: number,
+): (number | "ellipsis")[] {
+  const visible = new Set([1, pageCount, page - 1, page, page + 1]);
+  const pages = [...visible]
+    .filter((n) => n >= 1 && n <= pageCount)
+    .sort((a, b) => a - b);
+  const result: (number | "ellipsis")[] = [];
+  pages.forEach((n, i) => {
+    const previous = pages[i - 1];
+    if (previous && n - previous === 2) result.push(previous + 1);
+    else if (previous && n - previous > 2) result.push("ellipsis");
+    result.push(n);
+  });
+  return result;
+}

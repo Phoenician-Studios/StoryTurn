@@ -811,6 +811,8 @@ export async function updateMember(
 ): Promise<void> {
   const { supabase, member } = requireMember(await loadContext());
   requireOwner(member);
+  if (memberId === member.id && role !== member.role)
+    throw new Error("Cannot change your own role");
   const { error } = await supabase.rpc("update_family_member", {
     target_id: memberId,
     new_name: displayName.trim(),

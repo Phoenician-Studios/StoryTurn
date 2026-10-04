@@ -41,7 +41,8 @@ it("submits retained planned books through the actual session form and server ac
     screen.getByLabelText("Other book titles (one per line)"),
     "\nOne more story",
   );
-  await user.selectOptions(screen.getByLabelText("Status"), "completed");
+  await user.click(screen.getByLabelText("Status"));
+  await user.click(await screen.findByRole("option", { name: "Completed" }));
   await user.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() =>
     expect(store.getSessionDetail(night.id)?.session.status).toBe("completed"),

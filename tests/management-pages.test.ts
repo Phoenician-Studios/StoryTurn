@@ -34,7 +34,9 @@ it("offers parent invitations, reader editing, and child editing/removal", async
   const html = renderToStaticMarkup(
     await FamilyPage({ searchParams: Promise.resolve({}) }),
   );
-  expect(html).toContain("Parent (can manage family)");
+  expect(html).toContain("Parent (you)");
+  expect(html).not.toContain('aria-label="Access for Alex"');
+  expect(html).toContain('aria-label="Access for Jordan"');
   expect(html).toContain("Save reader");
   expect(html).toContain("Save child");
   expect(html).toContain("Remove child");

@@ -64,3 +64,24 @@
 - **Gap:** Separate inserts left a saved session without its random books after assignment failure, and retries skipped the existing night.
 - **Going forward:** Create a generated session and its dependent assignments in one database transaction. Test failure rollback and retry, and lock selected books against concurrent deletion.
 - **Pointers:** `supabase/migrations/007_atomic_session_generation.sql`, `generate_schedule_night`, `tests/database-management.test.ts`
+
+### 2026-10-04 — Verify rendered pagination
+
+- **Source:** PR #10 · Greptile
+- **Gap:** Helper tests did not verify numbered navigation, ellipses, or the current-page indicator in the rendered page.
+- **Going forward:** Test the rendered navigation and its accessible labels as well as page bounds and data retrieval.
+- **Pointers:** `tests/session-pages.test.ts`, `src/app/schedule/page.tsx`
+
+### 2026-10-04 — Preserve select functionality before hydration
+
+- **Source:** PR #9 · Greptile
+- **Gap:** Replacing native selects with JavaScript menus prevented choosing parent invitations before hydration or without JavaScript.
+- **Going forward:** Provide a usable server-rendered native select, upgrade after hydration, and test that a choice made during page load survives the upgrade.
+- **Pointers:** `src/components/form-select.tsx`, `tests/form-select.test.ts`
+
+### 2026-10-04 — Cover automatic search states
+
+- **Source:** PR #11 · Greptile
+- **Gap:** Debounced search lacked a minimum term length and tests for visible loading and failure states.
+- **Going forward:** Guard short automatic searches and test loading, success, failure, and stale responses together.
+- **Pointers:** `src/components/book-search.tsx`, `tests/book-search.test.ts`

@@ -75,12 +75,15 @@ it("adds a parent with a parent invite and allows editing their name and role", 
   store.joinFamily(code);
   const parent = store.getCurrentMember()!;
   expect(parent.role).toBe("owner");
+  expect(() => store.updateMember(parent.id, "New parent", "reader")).toThrow(/own role/);
+  store.updateMember(parent.id, "My name", "owner");
+  store.demoLogin("alex@example.com");
   store.updateMember(parent.id, "New parent", "reader");
   expect(parent.displayName).toBe("New parent");
   expect(parent.role).toBe("reader");
 });
 it("protects the last parent and scopes member and child edits to the family", () => {
-  expect(() => store.updateMember("mem_alex", "Alex", "reader")).toThrow(/last/i);
+  expect(() => store.updateMember("mem_alex", "Alex", "reader")).toThrow(/own role/i);
   expect(() => store.updateMember("foreign", "Name", "reader")).toThrow(/found/i);
   const kid = store.getDemoState().kids[0];
   store.updateKid(kid.id, "Sam", 7);

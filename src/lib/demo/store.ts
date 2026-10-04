@@ -694,6 +694,8 @@ export function updateMember(
     (m) => m.id === memberId && m.familyId === owner.familyId,
   );
   if (!target) throw new Error("Reader not found");
+  if (target.id === owner.id && role !== target.role)
+    throw new Error("Cannot change your own role");
   if (!displayName.trim()) throw new Error("Name is required");
   if (
     target.role === "owner" &&
