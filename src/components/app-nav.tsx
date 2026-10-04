@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { logoutAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -49,8 +50,11 @@ export function AppNav({ displayName }: { displayName: string }) {
     >
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-center gap-6">
-          <Link href="/" className="font-display text-xl tracking-tight text-primary">
-            StoryTurn
+          <Link
+            href="/"
+            className="shrink-0 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            <BrandLogo className="w-32" />
           </Link>
           <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
             {links.map((link) => (

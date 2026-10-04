@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-logo";
 import { ArrowLeft } from "lucide-react";
 export const dynamic = "force-dynamic";
 import { cookies } from "next/headers";
@@ -24,7 +25,7 @@ export default async function OnboardingPage() {
         </Button>
       </form>
       <div className="animate-rise">
-        <p className="font-display text-4xl text-primary">StoryTurn</p>
+        <BrandLogo className="w-64" />
         <h1 className="mt-2 text-2xl font-medium">Create or join a family</h1>
         <p className="mt-1 text-muted-foreground">
           Parents, grandparents, and other readers all join the same family with an invite
