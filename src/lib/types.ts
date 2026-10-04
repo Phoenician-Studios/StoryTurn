@@ -39,6 +39,7 @@ export interface InviteCode {
   expiresAt: string | null;
   maxUses: number | null;
   uses: number;
+  role?: MemberRole;
   createdAt: string;
 }
 
@@ -109,8 +110,10 @@ export interface ReadingSession {
   scheduleId: string | null;
   scheduledFor: string; // ISO datetime
   status: SessionStatus;
+  cancellationSource?: "schedule" | "individual" | null;
   notes: string | null;
   icsUid: string;
+  calendarSequence?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -147,6 +150,4 @@ export interface OutboundEmail {
   createdAt: string;
 }
 
-export type DashboardFilter =
-  | { type: "member"; memberId: string }
-  | { type: "family" };
+export type DashboardFilter = { type: "member"; memberId: string } | { type: "family" };

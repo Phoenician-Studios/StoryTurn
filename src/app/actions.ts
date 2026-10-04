@@ -7,6 +7,10 @@ import { appUrl, isDemoMode } from "@/lib/config";
 import {
   addBookFromSearch,
   addKid,
+  deleteKid,
+  updateKid,
+  updateMember,
+  deleteSchedule,
   cancelSession,
   createFamily,
   createInviteCode,
@@ -153,8 +157,8 @@ export async function addKidAction(formData: FormData) {
   revalidatePath("/family");
 }
 
-export async function createInviteAction() {
-  await createInviteCode();
+export async function createInviteAction(formData: FormData) {
+  await createInviteCode(String(formData.get("role")) === "owner" ? "owner" : "reader");
   revalidatePath("/family");
 }
 
@@ -228,4 +232,31 @@ export async function switchDemoUserAction(formData: FormData) {
   demoLogin(String(formData.get("email") ?? "alex@example.com"));
   revalidatePath("/");
   redirect("/");
+}
+
+export async function deleteScheduleAction() {
+  await deleteSchedule();
+  revalidatePath("/", "layout");
+}
+export async function updateMemberAction(formData: FormData) {
+  const role = String(formData.get("role"));
+  if (role !== "owner" && role !== "reader") throw new Error("Invalid role");
+  await updateMember(
+    String(formData.get("id")),
+    String(formData.get("name") ?? ""),
+    role,
+  );
+  revalidatePath("/", "layout");
+}
+export async function updateKidAction(formData: FormData) {
+  await updateKid(
+    String(formData.get("id")),
+    String(formData.get("name") ?? ""),
+    Number(formData.get("age")),
+  );
+  revalidatePath("/", "layout");
+}
+export async function deleteKidAction(formData: FormData) {
+  await deleteKid(String(formData.get("id")));
+  revalidatePath("/", "layout");
 }

@@ -80,8 +80,10 @@ export function mapInvite(row: Row): InviteCode {
     code: str(row, "code"),
     createdByMemberId: str(row, "created_by_member_id"),
     expiresAt: strOrNull(row, "expires_at"),
-    maxUses: row.max_uses === null || row.max_uses === undefined ? null : Number(row.max_uses),
+    maxUses:
+      row.max_uses === null || row.max_uses === undefined ? null : Number(row.max_uses),
     uses: Number(row.uses ?? 0),
+    role: str(row, "role") === "owner" ? "owner" : "reader",
     createdAt: str(row, "created_at"),
   };
 }
@@ -131,8 +133,15 @@ export function mapSession(row: Row): ReadingSession {
     scheduleId: strOrNull(row, "schedule_id"),
     scheduledFor: toWallClock(str(row, "scheduled_for")),
     status: sessionStatus(str(row, "status")),
+    cancellationSource:
+      row.cancellation_source === "schedule"
+        ? "schedule"
+        : row.cancellation_source === "individual"
+          ? "individual"
+          : null,
     notes: strOrNull(row, "notes"),
     icsUid: str(row, "ics_uid"),
+    calendarSequence: Number(row.calendar_sequence ?? 0),
     createdAt: str(row, "created_at"),
     updatedAt: str(row, "updated_at"),
   };

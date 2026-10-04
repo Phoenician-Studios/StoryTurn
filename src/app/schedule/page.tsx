@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import { saveScheduleAction } from "@/app/actions";
+import { saveScheduleAction, deleteScheduleAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +24,7 @@ export default async function SchedulePage() {
   const admin = await getFamilyAdmin();
   if (!admin) redirect("/onboarding");
   const sessions = (await listFamilySessions()).slice(0, 12);
-  const names = Object.fromEntries(
-    admin.readers.map((r) => [r.id, r.displayName]),
-  );
+  const names = Object.fromEntries(admin.readers.map((r) => [r.id, r.displayName]));
   const assignments = await listFamilyAssignments();
 
   return (
@@ -36,8 +34,8 @@ export default async function SchedulePage() {
         <section className="animate-rise">
           <h1 className="font-display text-3xl text-primary">Reading schedule</h1>
           <p className="mt-1 text-muted-foreground">
-            Rotate readers for nights with both kids together. Future nights get
-            ICS invites automatically.
+            Rotate readers for nights with both kids together. Future nights get ICS
+            invites automatically.
           </p>
         </section>
 
@@ -46,7 +44,9 @@ export default async function SchedulePage() {
             action={saveScheduleAction}
             className="story-panel mt-6 space-y-4 rounded-2xl p-5 animate-rise-delay"
           >
-            <h2 className="font-display text-xl">Rotation</h2>
+            <h2 className="font-display text-xl">
+              {admin.schedule ? "Edit rotation" : "Create rotation"}
+            </h2>
             <div className="flex flex-wrap gap-3">
               {admin.readers.map((reader) => (
                 <label
@@ -117,6 +117,16 @@ export default async function SchedulePage() {
           </p>
         )}
 
+        {member.role === "owner" && admin.schedule && (
+          <form action={deleteScheduleAction} className="mt-4">
+            <p className="mb-2 text-sm text-muted-foreground">
+              Deleting the schedule cancels its upcoming nights and keeps reading history.
+            </p>
+            <Button type="submit" variant="destructive">
+              Delete schedule
+            </Button>
+          </form>
+        )}
         <section className="mt-8">
           <h2 className="font-display text-xl">Upcoming & recent</h2>
           <ul className="mt-4 space-y-2">

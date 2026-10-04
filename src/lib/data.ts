@@ -36,7 +36,9 @@ export async function getDashboard(filter: DashboardFilter) {
 }
 
 export async function getSessionDetail(sessionId: string) {
-  return isDemoMode() ? demo.getSessionDetail(sessionId) : live.getSessionDetail(sessionId);
+  return isDemoMode()
+    ? demo.getSessionDetail(sessionId)
+    : live.getSessionDetail(sessionId);
 }
 
 export async function createFamily(name: string) {
@@ -51,8 +53,8 @@ export async function addKid(name: string, age: number) {
   return isDemoMode() ? demo.addKid(name, age) : live.addKid(name, age);
 }
 
-export async function createInviteCode() {
-  return isDemoMode() ? demo.createInviteCode() : live.createInviteCode();
+export async function createInviteCode(role: "owner" | "reader" = "reader") {
+  return isDemoMode() ? demo.createInviteCode(role) : live.createInviteCode(role);
 }
 
 export async function addBookFromSearch(input: {
@@ -99,4 +101,19 @@ export async function ensureUpcomingSessions(daysAhead = 14) {
 
 export function countOutboundEmails(): number {
   return isDemoMode() ? demo.getDemoState().outboundEmails.length : 0;
+}
+
+export async function deleteSchedule() {
+  return isDemoMode() ? demo.deleteSchedule() : live.deleteSchedule();
+}
+export async function updateMember(id: string, name: string, role: "owner" | "reader") {
+  return isDemoMode()
+    ? demo.updateMember(id, name, role)
+    : live.updateMember(id, name, role);
+}
+export async function updateKid(id: string, name: string, age: number) {
+  return isDemoMode() ? demo.updateKid(id, name, age) : live.updateKid(id, name, age);
+}
+export async function deleteKid(id: string) {
+  return isDemoMode() ? demo.deleteKid(id) : live.deleteKid(id);
 }

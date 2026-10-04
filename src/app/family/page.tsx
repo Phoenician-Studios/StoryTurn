@@ -1,6 +1,12 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import { addKidAction, createInviteAction } from "@/app/actions";
+import {
+  addKidAction,
+  createInviteAction,
+  updateMemberAction,
+  updateKidAction,
+  deleteKidAction,
+} from "@/app/actions";
 import { CopyInviteLink } from "@/components/copy-invite-link";
 import { AppNav } from "@/components/app-nav";
 import { Badge } from "@/components/ui/badge";
@@ -57,7 +63,42 @@ export default async function FamilyPage({
                     <p className="font-medium">{reader.displayName}</p>
                     <p className="text-sm text-muted-foreground">{reader.email}</p>
                   </div>
-                  <Badge variant="outline">{reader.role}</Badge>
+                  {member.role === "owner" ? (
+                    <form
+                      action={updateMemberAction}
+                      className="flex flex-wrap items-end gap-2"
+                    >
+                      <input type="hidden" name="id" value={reader.id} />
+                      <label className="text-sm">
+                        Name
+                        <Input
+                          name="name"
+                          aria-label={`Name for ${reader.displayName}`}
+                          defaultValue={reader.displayName}
+                          required
+                        />
+                      </label>
+                      <label className="text-sm">
+                        Access
+                        <select
+                          name="role"
+                          aria-label={`Access for ${reader.displayName}`}
+                          defaultValue={reader.role}
+                          className="block h-9 rounded-md border px-2"
+                        >
+                          <option value="owner">Parent (can manage family)</option>
+                          <option value="reader">Reader</option>
+                        </select>
+                      </label>
+                      <Button type="submit" variant="outline">
+                        Save reader
+                      </Button>
+                    </form>
+                  ) : (
+                    <Badge variant="outline">
+                      {reader.role === "owner" ? "Parent" : "Reader"}
+                    </Badge>
+                  )}
                 </li>
               ))}
             </ul>
@@ -71,8 +112,51 @@ export default async function FamilyPage({
                   key={kid.id}
                   className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2"
                 >
-                  <span className="font-medium">{kid.name}</span>
-                  <span className="text-sm text-muted-foreground">Age {kid.age}</span>
+                  {member.role === "owner" ? (
+                    <form
+                      action={updateKidAction}
+                      className="flex flex-wrap items-end gap-2"
+                    >
+                      <input type="hidden" name="id" value={kid.id} />
+                      <label className="text-sm">
+                        Name
+                        <Input
+                          name="name"
+                          aria-label={`Name for ${kid.name}`}
+                          defaultValue={kid.name}
+                          required
+                        />
+                      </label>
+                      <label className="text-sm">
+                        Age
+                        <Input
+                          name="age"
+                          aria-label={`Age for ${kid.name}`}
+                          type="number"
+                          min={0}
+                          max={18}
+                          defaultValue={kid.age}
+                          required
+                          className="w-20"
+                        />
+                      </label>
+                      <Button type="submit" variant="outline">
+                        Save child
+                      </Button>
+                      <Button
+                        type="submit"
+                        formAction={deleteKidAction}
+                        formNoValidate
+                        variant="destructive"
+                      >
+                        Remove child
+                      </Button>
+                    </form>
+                  ) : (
+                    <span>
+                      {kid.name} · Age {kid.age}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -106,11 +190,26 @@ export default async function FamilyPage({
             <div>
               <h2 className="font-display text-xl">Invite codes</h2>
               <p className="text-sm text-muted-foreground">
-                Share a code so another adult can join as a reader.
+                Share a code so another parent or caregiver can join. Parents can manage
+                the family and schedule.
               </p>
             </div>
             {member.role === "owner" && (
-              <form action={createInviteAction}>
+              <form
+                action={createInviteAction}
+                className="flex flex-wrap items-end gap-2"
+              >
+                <label className="text-sm">
+                  Invite as
+                  <select
+                    name="role"
+                    className="block h-9 rounded-md border px-2"
+                    defaultValue="reader"
+                  >
+                    <option value="reader">Reader</option>
+                    <option value="owner">Parent (can manage family)</option>
+                  </select>
+                </label>
                 <Button type="submit" variant="secondary">
                   Generate code
                 </Button>
@@ -126,7 +225,7 @@ export default async function FamilyPage({
                 <code className="font-mono text-sm tracking-wider">{invite.code}</code>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground">
-                    {invite.uses}
+                    {invite.role === "owner" ? "Parent" : "Reader"} · {invite.uses}
                     {invite.maxUses !== null ? ` / ${invite.maxUses}` : ""} uses
                   </span>
                   <CopyInviteLink code={invite.code} />
