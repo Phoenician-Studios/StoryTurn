@@ -37,6 +37,13 @@
 - **Going forward:** Test server-rendered form validity alongside client detection, preserve explicit saved choices, and cache supported-zone labels independently of selection state.
 - **Pointers:** `src/components/timezone-picker.tsx`, `tests/timezone-picker.test.ts`, `tests/timezone-options.test.ts`
 
+### 2026-10-04 — Paginate before the database API row limit
+
+- **Source:** PR #6 · Greptile
+- **Gap:** Slicing a capped database response made older sessions unreachable and understated the total page count.
+- **Going forward:** Use an exact database count and a stable ordered range for each page, then load assignments for only that page. Test records beyond the API row cap and confirm family scoping.
+- **Pointers:** `getFamilySessionPage`, `tests/supabase-repository.test.ts`, `tests/session-pages.test.ts`
+
 ### 2026-10-04 — Pending invites need lifecycle cleanup
 
 - **Source:** PR #2 · Greptile

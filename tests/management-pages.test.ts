@@ -15,14 +15,15 @@ vi.mock("@/lib/data", () => ({
   getCurrentUser: store.getCurrentUser,
   getCurrentMember: store.getCurrentMember,
   getFamilyAdmin: store.getFamilyAdmin,
-  listFamilySessions: store.listFamilySessions,
-  listFamilyAssignments: store.listFamilyAssignments,
+  getFamilySessionPage: store.getFamilySessionPage,
 }));
 import SchedulePage from "@/app/schedule/page";
 import FamilyPage from "@/app/family/page";
 beforeEach(() => store.resetDemoStore());
 it("offers parent schedule editing and deletion", async () => {
-  const html = renderToStaticMarkup(await SchedulePage());
+  const html = renderToStaticMarkup(
+    await SchedulePage({ searchParams: Promise.resolve({}) }),
+  );
   expect(html).toContain("Edit rotation");
   expect(html).toContain("Delete schedule");
   expect(html).not.toContain("Choose your timezone");
@@ -43,7 +44,9 @@ it("hides management forms from readers", async () => {
   const family = renderToStaticMarkup(
     await FamilyPage({ searchParams: Promise.resolve({}) }),
   );
-  const schedule = renderToStaticMarkup(await SchedulePage());
+  const schedule = renderToStaticMarkup(
+    await SchedulePage({ searchParams: Promise.resolve({}) }),
+  );
   expect(family).not.toContain("Save reader");
   expect(family).not.toContain("Remove child");
   expect(schedule).not.toContain("Delete schedule");

@@ -1,3 +1,4 @@
+import { sessionPageBounds } from "@/lib/domain/session-presentation";
 import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
@@ -178,6 +179,7 @@ export async function getHomeContext() {
       user: ctx.account,
       member: ctx.member,
       nextSession: null as ReadingSession | null,
+      timezone: "UTC",
       family: null as Family | null,
       kids: [] as Kid[],
       readers: [] as FamilyMember[],
@@ -189,7 +191,7 @@ export async function getHomeContext() {
   }
 
   const { supabase, member } = ctx;
-  const [familyRow, kids, readers, sessions] = await Promise.all([
+  const [familyRow, kids, readers, sessions, schedules] = await Promise.all([
     supabase.from("families").select("*").eq("id", member.familyId).maybeSingle(),
     rows(
       supabase.from("kids").select("*").eq("family_id", member.familyId),
@@ -198,6 +200,11 @@ export async function getHomeContext() {
     ),
     familyReaders(supabase, member.familyId),
     familySessions(supabase, member.familyId),
+    rows(
+      supabase.from("schedules").select("*").eq("family_id", member.familyId),
+      mapSchedule,
+      "Could not load schedules",
+    ),
   ]);
   assertNoError(familyRow.error, "Could not load family");
 
@@ -205,10 +212,12 @@ export async function getHomeContext() {
     supabase,
     sessions.map((session) => session.id),
   );
+  const timezone = schedules.find((s) => s.active)?.timezone ?? "UTC";
   const nextSession = nextSessionForMember({
     sessions,
     assignments,
     memberId: member.id,
+    nowIso: dateInTimezone(new Date(), timezone),
   });
 
   const [sessionBooks, corrections, books] = nextSession
@@ -239,6 +248,8 @@ export async function getHomeContext() {
     member,
     family: familyRow.data ? mapFamily(familyRow.data as Row) : null,
     nextSession,
+    timezone:
+      schedules.find((s) => s.id === nextSession?.scheduleId)?.timezone ?? timezone,
     kids,
     readers,
     assignments: nextSession
@@ -844,4 +855,47 @@ export async function deleteKid(kidId: string): Promise<void> {
     .select("id");
   assertNoError(error, "Could not delete child");
   if (!data?.length) throw new Error("Child not found");
+}
+
+export async function getFamilySessionPage(requestedPage?: string | string[]) {
+  const { supabase, member } = requireMember(await loadContext());
+  const { count, error } = await supabase
+    .from("reading_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("family_id", member.familyId);
+  assertNoError(error, "Could not count sessions");
+  const { page, pageCount, total, from, to } = sessionPageBounds(
+    count ?? 0,
+    requestedPage,
+  );
+  const items =
+    total === 0
+      ? []
+      : await rows(
+          supabase
+            .from("reading_sessions")
+            .select("*")
+            .eq("family_id", member.familyId)
+            .order("scheduled_for", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, to),
+          mapSession,
+          "Could not load session page",
+        );
+  const assignments =
+    items.length === 0
+      ? []
+      : await rows(
+          supabase
+            .from("session_assignments")
+            .select("*")
+            .in(
+              "session_id",
+              items.map((s) => s.id),
+            )
+            .eq("is_current", true),
+          mapAssignment,
+          "Could not load session readers",
+        );
+  return { items, assignments, page, pageCount, total };
 }

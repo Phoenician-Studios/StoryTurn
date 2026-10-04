@@ -10,23 +10,28 @@ import {
   getCurrentMember,
   getCurrentUser,
   getFamilyAdmin,
-  listFamilyAssignments,
-  listFamilySessions,
+  getFamilySessionPage,
 } from "@/lib/data";
 import { sessionDateKey } from "@/lib/domain/sessions";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
-export default async function SchedulePage() {
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const member = await getCurrentMember();
   if (!member) redirect("/onboarding");
   const admin = await getFamilyAdmin();
   if (!admin) redirect("/onboarding");
-  const sessions = (await listFamilySessions()).slice(0, 12);
+  const { page: requestedPage } = await searchParams;
+  const pagination = await getFamilySessionPage(requestedPage);
+  const assignments = pagination.assignments;
+  const sessions = pagination.items;
   const names = Object.fromEntries(admin.readers.map((r) => [r.id, r.displayName]));
-  const assignments = await listFamilyAssignments();
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -133,6 +138,43 @@ export default async function SchedulePage() {
               </li>
             ))}
           </ul>
+          {pagination.total === 0 ? (
+            <p className="mt-4 text-muted-foreground">No reading sessions yet.</p>
+          ) : (
+            <nav
+              aria-label="Session pages"
+              className="mt-4 flex items-center justify-between gap-3"
+            >
+              {pagination.page > 1 ? (
+                <Link
+                  href={`/schedule?page=${pagination.page - 1}`}
+                  className="text-primary underline"
+                >
+                  Previous
+                </Link>
+              ) : (
+                <span aria-disabled="true" className="text-muted-foreground">
+                  Previous
+                </span>
+              )}
+              <span className="text-sm" aria-live="polite">
+                Page {pagination.page} of {pagination.pageCount} · {pagination.total}{" "}
+                sessions
+              </span>
+              {pagination.page < pagination.pageCount ? (
+                <Link
+                  href={`/schedule?page=${pagination.page + 1}`}
+                  className="text-primary underline"
+                >
+                  Next
+                </Link>
+              ) : (
+                <span aria-disabled="true" className="text-muted-foreground">
+                  Next
+                </span>
+              )}
+            </nav>
+          )}
         </section>
       </main>
     </div>

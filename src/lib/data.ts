@@ -117,3 +117,9 @@ export async function updateKid(id: string, name: string, age: number) {
 export async function deleteKid(id: string) {
   return isDemoMode() ? demo.deleteKid(id) : live.deleteKid(id);
 }
+
+export async function getFamilySessionPage(requestedPage?: string | string[]) {
+  return isDemoMode()
+    ? demo.getFamilySessionPage(requestedPage)
+    : live.getFamilySessionPage(requestedPage);
+}
