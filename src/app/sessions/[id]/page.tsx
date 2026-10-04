@@ -1,5 +1,5 @@
 import { BackLink } from "@/components/back-link";
-import { NativeSelect } from "@/components/ui/native-select";
+import { FormSelect } from "@/components/form-select";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { cancelSessionAction, updateSessionAction } from "@/app/actions";
@@ -160,11 +160,16 @@ export default async function SessionPage({
 
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <NativeSelect id="status" name="status" defaultValue={detail.session.status}>
-              <option value="scheduled">Scheduled</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </NativeSelect>
+            <FormSelect
+              id="status"
+              name="status"
+              defaultValue={detail.session.status}
+              options={[
+                { value: "scheduled", label: "Scheduled" },
+                { value: "completed", label: "Completed" },
+                { value: "cancelled", label: "Cancelled" },
+              ]}
+            />
           </div>
 
           {(past || detail.session.status === "completed") && (
