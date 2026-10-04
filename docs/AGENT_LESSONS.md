@@ -57,3 +57,10 @@
 - **Gap:** A restored reader received REQUEST sequence 0 after CANCEL sequence 1 for the same calendar UID, causing clients to reject the restoration.
 - **Going forward:** Persist and atomically increment each session's calendar revision across edits, cancellations, and restorations. Test remove-and-restore cycles even when the clock does not advance.
 - **Pointers:** `supabase/migrations/005_calendar_sequence.sql`, `src/lib/session-mail.ts`, `tests/schedule-feedback.test.ts`
+
+### 2026-10-04 — Generate complete nights atomically
+
+- **Source:** PR #12 · Greptile
+- **Gap:** Separate inserts left a saved session without its random books after assignment failure, and retries skipped the existing night.
+- **Going forward:** Create a generated session and its dependent assignments in one database transaction. Test failure rollback and retry, and lock selected books against concurrent deletion.
+- **Pointers:** `supabase/migrations/007_atomic_session_generation.sql`, `generate_schedule_night`, `tests/database-management.test.ts`

@@ -1,8 +1,5 @@
 import { sessionPageBounds } from "@/lib/domain/session-presentation";
-import {
-  assertScheduleSettings,
-  selectRandomBooks,
-} from "@/lib/domain/schedule-settings";
+import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
@@ -465,13 +462,6 @@ async function insertGeneratedSessions(
   let created = 0;
 
   for (const schedule of schedules) {
-    const library = schedule.assignRandomBooks
-      ? await rows(
-          supabase.from("books").select("*").eq("family_id", schedule.familyId),
-          mapBook,
-          "Could not load family library",
-        )
-      : [];
     const today = dateInTimezone(new Date(), schedule.timezone);
     const through = addDays(today, daysAhead);
     const { data: existingRows, error: existingError } = await supabase
@@ -492,38 +482,14 @@ async function insertGeneratedSessions(
     });
 
     for (const draft of drafts) {
-      const { data, error } = await supabase
-        .from("reading_sessions")
-        .insert({
-          family_id: schedule.familyId,
-          schedule_id: schedule.id,
-          scheduled_for: `${draft.scheduledFor}+00:00`,
-          status: "scheduled",
-          ics_uid: draft.icsUid,
-        })
-        .select("id")
-        .single();
-      assertNoError(error, "Could not create session");
-      const sessionId = String((data as Row).id);
-      const { error: assignmentError } = await supabase
-        .from("session_assignments")
-        .insert({
-          session_id: sessionId,
-          member_id: draft.memberId,
-          is_original: true,
-          is_current: true,
-        });
-      assertNoError(assignmentError, "Could not assign reader");
-      const bookRows = selectRandomBooks(
-        library.map((book) => book.id),
-        schedule.booksPerSession ?? 1,
-      ).map((bookId) => ({ session_id: sessionId, book_id: bookId }));
-      if (bookRows.length) {
-        const { error: bookError } = await supabase
-          .from("session_books")
-          .insert(bookRows);
-        assertNoError(bookError, "Could not assign books");
-      }
+      const { data, error } = await supabase.rpc("generate_schedule_night", {
+        target_schedule_id: schedule.id,
+        night_date: sessionDateKey(draft.scheduledFor),
+      });
+      assertNoError(error, "Could not generate session");
+      // Another generator may already have created this night.
+      if (!data) continue;
+      const sessionId = String(data);
       await sendInvite(supabase, sessionId, "REQUEST");
       created += 1;
     }
