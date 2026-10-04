@@ -9,7 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCurrentMember, getCurrentUser, getFamilyAdmin } from "@/lib/data";
 
-export default async function FamilyPage() {
+export default async function FamilyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>;
+}) {
+  const { invite } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const member = await getCurrentMember();
@@ -27,6 +32,17 @@ export default async function FamilyPage() {
             Manage kids, readers, and invite codes for grandparents or other caregivers.
           </p>
         </section>
+
+        {invite === "already-member" && (
+          <p
+            role="status"
+            className="mt-4 rounded-lg border border-border bg-secondary/50 p-3 text-sm"
+          >
+            You already belong to a family. This account cannot join another family with
+            an invite. To use the invite with a different account, sign out and reopen the
+            link.
+          </p>
+        )}
 
         <div className="mt-6 grid gap-6 md:grid-cols-2">
           <section className="story-panel rounded-2xl p-5 animate-rise-delay">

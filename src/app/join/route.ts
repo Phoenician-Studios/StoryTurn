@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentMember, getCurrentUser } from "@/lib/data";
 import { normalizeInviteCode } from "@/lib/domain/invites";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = normalizeInviteCode(url.searchParams.get("code") ?? "");
   const user = await getCurrentUser();
+  if (user && (await getCurrentMember())) {
+    const response = NextResponse.redirect(
+      new URL("/family?invite=already-member", url.origin),
+    );
+    response.cookies.delete("storyturn-invite");
+    return response;
+  }
   const response = NextResponse.redirect(
     new URL(user ? "/onboarding" : "/login", url.origin),
   );
@@ -17,6 +24,8 @@ export async function GET(request: Request) {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
+  } else {
+    response.cookies.delete("storyturn-invite");
   }
   return response;
 }
