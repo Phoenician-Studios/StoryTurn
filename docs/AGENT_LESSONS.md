@@ -57,3 +57,10 @@
 - **Gap:** A restored reader received REQUEST sequence 0 after CANCEL sequence 1 for the same calendar UID, causing clients to reject the restoration.
 - **Going forward:** Persist and atomically increment each session's calendar revision across edits, cancellations, and restorations. Test remove-and-restore cycles even when the clock does not advance.
 - **Pointers:** `supabase/migrations/005_calendar_sequence.sql`, `src/lib/session-mail.ts`, `tests/schedule-feedback.test.ts`
+
+### 2026-10-04 — Preserve select functionality before hydration
+
+- **Source:** PR #9 · Greptile
+- **Gap:** Replacing native selects with JavaScript menus prevented choosing parent invitations before hydration or without JavaScript.
+- **Going forward:** Provide a usable server-rendered native select, upgrade after hydration, and test that a choice made during page load survives the upgrade.
+- **Pointers:** `src/components/form-select.tsx`, `tests/form-select.test.ts`

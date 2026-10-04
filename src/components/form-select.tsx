@@ -1,5 +1,8 @@
 "use client";
 
+import { useCallback, useState, useSyncExternalStore } from "react";
+import { NativeSelect } from "@/components/ui/native-select";
+
 import {
   Select,
   SelectContent,
@@ -7,6 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const subscribe = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
 type FormSelectProps = {
   name: string;
@@ -25,8 +32,35 @@ export function FormSelect({
   "aria-label": ariaLabel,
   className,
 }: FormSelectProps) {
+  const hydrated = useSyncExternalStore(subscribe, clientSnapshot, serverSnapshot);
+  const [selectedValue, setSelectedValue] = useState(defaultValue);
+  const captureNativeValue = useCallback((node: HTMLSelectElement | null) => {
+    // Preserve a selection made before React attached event handlers.
+    if (node) setSelectedValue(node.value);
+  }, []);
+
+  if (!hydrated) {
+    return (
+      <NativeSelect
+        ref={captureNativeValue}
+        id={id}
+        name={name}
+        aria-label={ariaLabel}
+        className={className}
+        defaultValue={defaultValue}
+        onChange={(event) => setSelectedValue(event.target.value)}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </NativeSelect>
+    );
+  }
+
   return (
-    <Select name={name} defaultValue={defaultValue} items={options}>
+    <Select name={name} defaultValue={selectedValue} items={options}>
       <SelectTrigger
         id={id}
         aria-label={ariaLabel}
