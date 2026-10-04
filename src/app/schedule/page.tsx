@@ -5,7 +5,7 @@ import { AppNav } from "@/components/app-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TimezonePicker } from "@/components/timezone-picker";
+import { NativeTimezoneForm } from "@/components/native-timezone-form";
 import {
   getCurrentMember,
   getCurrentUser,
@@ -46,10 +46,7 @@ export default async function SchedulePage({
         </section>
 
         {member.role === "owner" ? (
-          <form
-            action={saveScheduleAction}
-            className="story-panel mt-6 space-y-4 rounded-2xl p-5 animate-rise-delay"
-          >
+          <NativeTimezoneForm action={saveScheduleAction}>
             <h2 className="font-display text-xl">
               {admin.schedule ? "Edit rotation" : "Create rotation"}
             </h2>
@@ -94,14 +91,13 @@ export default async function SchedulePage({
                   defaultValue={admin.schedule?.timeLocal ?? "19:30"}
                 />
               </div>
-              <TimezonePicker defaultValue={admin.schedule?.timezone} />
               <p className="text-sm text-muted-foreground sm:col-span-2">
                 Choose books before reading, log them afterward, or do both. You can
                 update each night’s book list at any time.
               </p>
             </div>
             <Button type="submit">Save schedule & generate nights</Button>
-          </form>
+          </NativeTimezoneForm>
         ) : (
           <p className="story-panel mt-6 rounded-2xl p-5 text-sm text-muted-foreground">
             Family owners manage the rotation. Your upcoming nights are listed below.
