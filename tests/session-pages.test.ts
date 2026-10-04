@@ -112,3 +112,29 @@ it("generates tonight before rendering its local-date label", async () => {
   store.ensureUpcomingSessions(1);
   expect(renderToStaticMarkup(await HomePage())).toContain("Tonight at");
 });
+
+it("renders numbered links, ellipses, and exactly one current page", async () => {
+  const state = store.getDemoState();
+  const template = { ...state.sessions[0] };
+  state.sessions = Array.from({ length: 1005 }, (_, i) => ({
+    ...template,
+    id: `pagination-${i}`,
+    scheduledFor: new Date(Date.UTC(2026, 0, 1) + i * 86400000).toISOString(),
+  }));
+  const html = renderToStaticMarkup(
+    await SchedulePage({ searchParams: Promise.resolve({ page: "50" }) }),
+  );
+  const nav = html.match(/<nav aria-label="Session pages"[\s\S]*?<\/nav>/)?.[0];
+  expect(nav).toBeDefined();
+  const links = [...nav!.matchAll(/<a\b([^>]*)>(\d+)<\/a>/g)];
+  expect(links.map((match) => Number(match[2]))).toEqual([1, 49, 50, 51, 101]);
+  for (const [, attributes, label] of links) {
+    expect(attributes).toContain(`href="/schedule?page=${label}"`);
+    expect(attributes).toContain(`aria-label="Page ${label}"`);
+    expect(attributes.includes('aria-current="page"')).toBe(label === "50");
+  }
+  expect((nav!.match(/aria-current="page"/g) ?? []).length).toBe(1);
+  expect((nav!.match(/aria-hidden="true">…<\/span>/g) ?? []).length).toBe(2);
+  expect(nav).not.toContain("Previous");
+  expect(nav).not.toContain(">Next<");
+});

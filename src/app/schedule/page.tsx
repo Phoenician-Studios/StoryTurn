@@ -13,9 +13,10 @@ import {
   getFamilyAdmin,
   getFamilySessionPage,
 } from "@/lib/data";
-import { sessionDateKey } from "@/lib/domain/sessions";
+import { formatSessionDate, sessionPageNumbers } from "@/lib/domain/session-presentation";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { SessionStatusBadge } from "@/components/session-status";
+import { buttonVariants } from "@/components/ui/button";
 
 export default async function SchedulePage({
   searchParams,
@@ -126,15 +127,13 @@ export default async function SchedulePage({
                   className="story-panel grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-x-3 gap-y-1 rounded-xl px-4 py-3 transition hover:border-primary/40 sm:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)]"
                 >
                   <span>
-                    {sessionDateKey(session.scheduledFor)} ·{" "}
+                    {formatSessionDate(session.scheduledFor)} ·{" "}
                     {session.scheduledFor.slice(11, 16)}
                   </span>
-                  <Badge
-                    variant="outline"
+                  <SessionStatusBadge
+                    status={session.status}
                     className="col-start-2 row-start-1 justify-self-center"
-                  >
-                    {session.status}
-                  </Badge>
+                  />
                   <span className="col-start-1 row-start-2 min-w-0 break-words text-sm text-muted-foreground sm:col-start-3 sm:row-start-1 sm:text-right">
                     {assignments
                       .filter((a) => a.sessionId === session.id && a.isCurrent)
@@ -150,36 +149,35 @@ export default async function SchedulePage({
           ) : (
             <nav
               aria-label="Session pages"
-              className="mt-4 flex items-center justify-between gap-3"
+              className="mt-4 flex flex-wrap items-center justify-between gap-3"
             >
-              {pagination.page > 1 ? (
-                <Link
-                  href={`/schedule?page=${pagination.page - 1}`}
-                  className="text-primary underline"
-                >
-                  Previous
-                </Link>
-              ) : (
-                <span aria-disabled="true" className="text-muted-foreground">
-                  Previous
-                </span>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {sessionPageNumbers(pagination.page, pagination.pageCount).map(
+                  (page, index) =>
+                    page === "ellipsis" ? (
+                      <span key={`gap-${index}`} className="px-2 py-2" aria-hidden="true">
+                        …
+                      </span>
+                    ) : (
+                      <Link
+                        key={page}
+                        href={`/schedule?page=${page}`}
+                        aria-label={`Page ${page}`}
+                        aria-current={page === pagination.page ? "page" : undefined}
+                        className={buttonVariants({
+                          variant: page === pagination.page ? "default" : "outline",
+                          size: "sm",
+                        })}
+                      >
+                        {page}
+                      </Link>
+                    ),
+                )}
+              </div>
               <span className="text-sm" aria-live="polite">
                 Page {pagination.page} of {pagination.pageCount} · {pagination.total}{" "}
                 sessions
               </span>
-              {pagination.page < pagination.pageCount ? (
-                <Link
-                  href={`/schedule?page=${pagination.page + 1}`}
-                  className="text-primary underline"
-                >
-                  Next
-                </Link>
-              ) : (
-                <span aria-disabled="true" className="text-muted-foreground">
-                  Next
-                </span>
-              )}
             </nav>
           )}
         </section>

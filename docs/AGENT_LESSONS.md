@@ -58,6 +58,13 @@
 - **Going forward:** Persist and atomically increment each session's calendar revision across edits, cancellations, and restorations. Test remove-and-restore cycles even when the clock does not advance.
 - **Pointers:** `supabase/migrations/005_calendar_sequence.sql`, `src/lib/session-mail.ts`, `tests/schedule-feedback.test.ts`
 
+### 2026-10-04 — Verify rendered pagination
+
+- **Source:** PR #10 · Greptile
+- **Gap:** Helper tests did not verify numbered navigation, ellipses, or the current-page indicator in the rendered page.
+- **Going forward:** Test the rendered navigation and its accessible labels as well as page bounds and data retrieval.
+- **Pointers:** `tests/session-pages.test.ts`, `src/app/schedule/page.tsx`
+
 ### 2026-10-04 — Preserve select functionality before hydration
 
 - **Source:** PR #9 · Greptile
