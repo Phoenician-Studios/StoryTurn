@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/back-link";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { saveScheduleAction, deleteScheduleAction } from "@/app/actions";
@@ -32,6 +33,7 @@ export default async function SchedulePage() {
     <div className="flex min-h-full flex-1 flex-col">
       <AppNav displayName={member.displayName} />
       <main className="mx-auto w-full max-w-5xl px-4 py-8">
+        <BackLink />
         <section className="animate-rise">
           <h1 className="font-display text-3xl text-primary">Reading schedule</h1>
           <p className="mt-1 text-muted-foreground">
@@ -116,14 +118,19 @@ export default async function SchedulePage() {
               <li key={session.id}>
                 <Link
                   href={`/sessions/${session.id}`}
-                  className="story-panel flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 transition hover:border-primary/40"
+                  className="story-panel grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-x-3 gap-y-1 rounded-xl px-4 py-3 transition hover:border-primary/40 sm:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)]"
                 >
                   <span>
                     {sessionDateKey(session.scheduledFor)} ·{" "}
                     {session.scheduledFor.slice(11, 16)}
                   </span>
-                  <Badge variant="outline">{session.status}</Badge>
-                  <span className="text-sm text-muted-foreground">
+                  <Badge
+                    variant="outline"
+                    className="col-start-2 row-start-1 justify-self-center"
+                  >
+                    {session.status}
+                  </Badge>
+                  <span className="col-start-1 row-start-2 min-w-0 break-words text-sm text-muted-foreground sm:col-start-3 sm:row-start-1 sm:text-right">
                     {assignments
                       .filter((a) => a.sessionId === session.id && a.isCurrent)
                       .map((a) => names[a.memberId] ?? "Reader")

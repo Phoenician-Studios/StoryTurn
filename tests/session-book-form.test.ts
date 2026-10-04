@@ -30,10 +30,13 @@ it("submits retained planned books through the actual session form and server ac
   });
   render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
   const user = userEvent.setup();
+  await user.click(screen.getByText(/Books from library ·/));
   expect(
     (screen.getByRole("checkbox", { name: "Goodnight Moon" }) as HTMLInputElement)
       .checked,
   ).toBe(true);
+  await user.click(screen.getByRole("checkbox", { name: "The Very Hungry Caterpillar" }));
+  await user.click(screen.getByText(/Books from library ·/));
   await user.type(
     screen.getByLabelText("Other book titles (one per line)"),
     "\nOne more story",
@@ -45,5 +48,5 @@ it("submits retained planned books through the actual session form and server ac
   );
   expect(
     store.getSessionDetail(night.id)?.books.map((b) => b.titleFreeform ?? b.bookId),
-  ).toEqual(["book_moon", "Planned story", "One more story"]);
+  ).toEqual(["book_moon", "book_hungry", "Planned story", "One more story"]);
 });

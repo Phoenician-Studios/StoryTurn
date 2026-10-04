@@ -1,3 +1,5 @@
+import { BackLink } from "@/components/back-link";
+import { NativeSelect } from "@/components/ui/native-select";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import {
@@ -32,6 +34,7 @@ export default async function FamilyPage({
     <div className="flex min-h-full flex-1 flex-col">
       <AppNav displayName={member.displayName} />
       <main className="mx-auto w-full max-w-5xl px-4 py-8">
+        <BackLink />
         <section className="animate-rise">
           <h1 className="font-display text-3xl text-primary">{admin.family.name}</h1>
           <p className="mt-1 text-muted-foreground">
@@ -50,47 +53,53 @@ export default async function FamilyPage({
           </p>
         )}
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <div className="mt-6 grid gap-6 xl:grid-cols-2">
           <section className="story-panel rounded-2xl p-5 animate-rise-delay">
             <h2 className="font-display text-xl">Readers</h2>
             <ul className="mt-4 space-y-2">
               {admin.readers.map((reader) => (
                 <li
                   key={reader.id}
-                  className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2"
+                  className="flex min-w-0 flex-col gap-4 rounded-xl bg-secondary/50 p-4"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-medium">{reader.displayName}</p>
-                    <p className="text-sm text-muted-foreground">{reader.email}</p>
+                    <p className="break-all text-sm text-muted-foreground">
+                      {reader.email}
+                    </p>
                   </div>
                   {member.role === "owner" ? (
                     <form
                       action={updateMemberAction}
-                      className="flex flex-wrap items-end gap-2"
+                      className="grid w-full min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]"
                     >
                       <input type="hidden" name="id" value={reader.id} />
-                      <label className="text-sm">
+                      <label className="min-w-0 space-y-2 text-sm">
                         Name
                         <Input
                           name="name"
                           aria-label={`Name for ${reader.displayName}`}
                           defaultValue={reader.displayName}
                           required
+                          className="min-h-11 text-base sm:text-sm"
                         />
                       </label>
-                      <label className="text-sm">
+                      <label className="min-w-0 space-y-2 text-sm">
                         Access
-                        <select
+                        <NativeSelect
                           name="role"
                           aria-label={`Access for ${reader.displayName}`}
                           defaultValue={reader.role}
-                          className="block h-9 rounded-md border px-2"
                         >
                           <option value="owner">Parent (can manage family)</option>
                           <option value="reader">Reader</option>
-                        </select>
+                        </NativeSelect>
                       </label>
-                      <Button type="submit" variant="outline">
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="min-h-11 w-full self-end sm:w-auto"
+                      >
                         Save reader
                       </Button>
                     </form>
@@ -201,14 +210,10 @@ export default async function FamilyPage({
               >
                 <label className="text-sm">
                   Invite as
-                  <select
-                    name="role"
-                    className="block h-9 rounded-md border px-2"
-                    defaultValue="reader"
-                  >
+                  <NativeSelect name="role" defaultValue="reader">
                     <option value="reader">Reader</option>
                     <option value="owner">Parent (can manage family)</option>
-                  </select>
+                  </NativeSelect>
                 </label>
                 <Button type="submit" variant="secondary">
                   Generate code

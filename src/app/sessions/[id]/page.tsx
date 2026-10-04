@@ -1,7 +1,10 @@
+import { BackLink } from "@/components/back-link";
+import { NativeSelect } from "@/components/ui/native-select";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { cancelSessionAction, updateSessionAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
+import { SessionBookPicker } from "@/components/session-book-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -46,6 +49,7 @@ export default async function SessionPage({
     <div className="flex min-h-full flex-1 flex-col">
       <AppNav displayName={member.displayName} />
       <main className="mx-auto w-full max-w-3xl px-4 py-8">
+        <BackLink href="/schedule" label="Back to schedule" />
         <section className="animate-rise">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{detail.session.status}</Badge>
@@ -125,27 +129,15 @@ export default async function SessionPage({
           </div>
 
           <div className="space-y-2">
-            <Label>Books from library</Label>
             <p className="text-sm text-muted-foreground">
               Plan some books now and add more after reading. Keep any planned books you
               actually read selected.
             </p>
-            <div className="flex flex-wrap gap-3">
-              {detail.library.map((book) => (
-                <label
-                  key={book.id}
-                  className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    name="bookIds"
-                    value={book.id}
-                    defaultChecked={selectedBookIds.has(book.id)}
-                  />
-                  {book.title}
-                </label>
-              ))}
-            </div>
+            <SessionBookPicker
+              key={detail.session.id}
+              books={detail.library.map(({ id, title }) => ({ id, title }))}
+              selectedIds={[...selectedBookIds]}
+            />
           </div>
 
           <div className="space-y-2">
@@ -167,16 +159,11 @@ export default async function SessionPage({
 
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <select
-              id="status"
-              name="status"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              defaultValue={detail.session.status}
-            >
+            <NativeSelect id="status" name="status" defaultValue={detail.session.status}>
               <option value="scheduled">Scheduled</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
-            </select>
+            </NativeSelect>
           </div>
 
           {(past || detail.session.status === "completed") && (
