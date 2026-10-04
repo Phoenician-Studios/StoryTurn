@@ -1,12 +1,36 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Check, Loader2 } from "lucide-react";
+import { useFormStatus } from "react-dom";
 import { addBookAction, searchBooksAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BookSearchResult } from "@/lib/open-library";
 
-export function BookSearch() {
+function AddBookButton({ inCollection }: { inCollection: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button
+      type="submit"
+      size="sm"
+      variant="secondary"
+      disabled={pending || inCollection}
+      aria-busy={pending}
+    >
+      {pending ? (
+        <Loader2 className="animate-spin" aria-hidden="true" />
+      ) : inCollection ? (
+        <Check aria-hidden="true" />
+      ) : null}
+      {pending ? "Adding…" : inCollection ? "In collection" : "Add to library"}
+    </Button>
+  );
+}
+
+export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
+  const [addedKeys, setAddedKeys] = useState<string[]>([]);
+  const inCollection = new Set([...collectionKeys, ...addedKeys]);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -67,23 +91,23 @@ export function BookSearch() {
                 </p>
               </div>
             </div>
-            <form action={addBookAction}>
+            <form
+              action={async (formData) => {
+                try {
+                  await addBookAction(formData);
+                  setAddedKeys((keys) => [...keys, book.openLibraryKey]);
+                  setError(null);
+                } catch {
+                  setError("Could not add book. Please try again.");
+                }
+              }}
+            >
               <input type="hidden" name="title" value={book.title} />
-              <input
-                type="hidden"
-                name="authors"
-                value={book.authors.join(", ")}
-              />
-              <input
-                type="hidden"
-                name="openLibraryKey"
-                value={book.openLibraryKey}
-              />
+              <input type="hidden" name="authors" value={book.authors.join(", ")} />
+              <input type="hidden" name="openLibraryKey" value={book.openLibraryKey} />
               <input type="hidden" name="coverUrl" value={book.coverUrl ?? ""} />
               <input type="hidden" name="isbn" value={book.isbn ?? ""} />
-              <Button type="submit" size="sm" variant="secondary">
-                Add to library
-              </Button>
+              <AddBookButton inCollection={inCollection.has(book.openLibraryKey)} />
             </form>
           </li>
         ))}

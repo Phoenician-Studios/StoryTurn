@@ -36,3 +36,10 @@
 - **Gap:** Browser-only timezone detection left a required server-rendered select empty, so new schedules lacked a usable default before hydration. Label formatting also repeated for every zone on each selection.
 - **Going forward:** Test server-rendered form validity alongside client detection, preserve explicit saved choices, and cache supported-zone labels independently of selection state.
 - **Pointers:** `src/components/timezone-picker.tsx`, `tests/timezone-picker.test.ts`, `tests/timezone-options.test.ts`
+
+### 2026-10-04 — Pending invites need lifecycle cleanup
+
+- **Source:** PR #2 · Greptile
+- **Gap:** An invite cookie survived sign-out and demo account switches, and enrolled recipients lost invite context in a redirect without explanation.
+- **Going forward:** Preserve pending invites through initial authentication, clear them on sign-out, account switches, and completed family setup, and provide an explicit outcome when membership prevents accepting an invite. Test both new and enrolled recipients and account transitions.
+- **Pointers:** `src/app/join/route.ts`, `src/app/actions.ts`, `tests/invite-account-lifecycle.test.ts`
