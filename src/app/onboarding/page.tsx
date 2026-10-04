@@ -1,7 +1,8 @@
+import { ArrowLeft } from "lucide-react";
 export const dynamic = "force-dynamic";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createFamilyAction, joinFamilyAction } from "@/app/actions";
+import { createFamilyAction, joinFamilyAction, logoutAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,12 @@ export default async function OnboardingPage() {
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-12">
+      <form action={logoutAction}>
+        <Button type="submit" variant="ghost" className="min-h-11 gap-2">
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Back to sign in
+        </Button>
+      </form>
       <div className="animate-rise">
         <p className="font-display text-4xl text-primary">StoryTurn</p>
         <h1 className="mt-2 text-2xl font-medium">Create or join a family</h1>

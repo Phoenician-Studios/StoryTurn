@@ -30,10 +30,13 @@ it("submits retained planned books through the actual session form and server ac
   });
   render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
   const user = userEvent.setup();
+  await user.click(screen.getByText(/Books from library ·/));
   expect(
     (screen.getByRole("checkbox", { name: "Goodnight Moon" }) as HTMLInputElement)
       .checked,
   ).toBe(true);
+  await user.click(screen.getByRole("checkbox", { name: "The Very Hungry Caterpillar" }));
+  await user.click(screen.getByText(/Books from library ·/));
   await user.type(
     screen.getByLabelText("Other book titles (one per line)"),
     "\nOne more story",
@@ -45,5 +48,49 @@ it("submits retained planned books through the actual session form and server ac
   );
   expect(
     store.getSessionDetail(night.id)?.books.map((b) => b.titleFreeform ?? b.bookId),
-  ).toEqual(["book_moon", "Planned story", "One more story"]);
+  ).toEqual(["book_moon", "book_hungry", "Planned story", "One more story"]);
+});
+
+it("removes an initially selected book when saved with the dropdown closed", async () => {
+  const night = store.getHomeContext().nextSession!;
+  await store.updateSession({
+    sessionId: night.id,
+    memberIds: ["mem_alex"],
+    bookIds: ["book_moon", "book_hungry"],
+    freeformTitles: ["Planned story"],
+    notes: null,
+    status: "scheduled",
+  });
+  const view = render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
+  const user = userEvent.setup();
+  await user.click(screen.getByText(/Books from library ·/));
+  const moon = screen.getByRole("checkbox", {
+    name: "Goodnight Moon",
+  }) as HTMLInputElement;
+  expect(moon.checked).toBe(true);
+  await user.click(moon);
+  expect(moon.checked).toBe(false);
+  await user.click(screen.getByText(/Books from library ·/));
+  expect(moon.closest("details")?.open).toBe(false);
+  await user.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() =>
+    expect(
+      store.getSessionDetail(night.id)?.books.map((b) => b.titleFreeform ?? b.bookId),
+    ).toEqual(["book_hungry", "Planned story"]),
+  );
+
+  view.unmount();
+  render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
+  await user.click(screen.getByText(/Books from library ·/));
+  expect(
+    (screen.getByRole("checkbox", { name: "Goodnight Moon" }) as HTMLInputElement)
+      .checked,
+  ).toBe(false);
+  expect(
+    (
+      screen.getByRole("checkbox", {
+        name: "The Very Hungry Caterpillar",
+      }) as HTMLInputElement
+    ).checked,
+  ).toBe(true);
 });

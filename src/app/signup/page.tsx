@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/back-link";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { signupAction } from "@/app/actions";
@@ -16,6 +17,7 @@ export default async function SignupPage({
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
+      <BackLink href="/login" label="Back to sign in" />
       <div className="story-panel animate-rise rounded-2xl p-6">
         <p className="font-display text-3xl text-primary">StoryTurn</p>
         <h1 className="mt-2 text-xl font-medium">Create your account</h1>
@@ -36,7 +38,13 @@ export default async function SignupPage({
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required={!demo} minLength={demo ? undefined : 6} />
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              required={!demo}
+              minLength={demo ? undefined : 6}
+            />
           </div>
           <Button type="submit" className="w-full">
             Sign up

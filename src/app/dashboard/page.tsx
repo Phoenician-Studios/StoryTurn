@@ -1,12 +1,9 @@
+import { BackLink } from "@/components/back-link";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
 import { Badge } from "@/components/ui/badge";
-import {
-  getCurrentMember,
-  getCurrentUser,
-  getDashboard,
-} from "@/lib/data";
+import { getCurrentMember, getCurrentUser, getDashboard } from "@/lib/data";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -35,11 +32,12 @@ export default async function DashboardPage({
     <div className="flex min-h-full flex-1 flex-col">
       <AppNav displayName={member.displayName} />
       <main className="mx-auto w-full max-w-5xl px-4 py-8">
+        <BackLink />
         <section className="animate-rise">
           <h1 className="font-display text-3xl text-primary">Reading dashboard</h1>
           <p className="mt-1 text-muted-foreground">
-            Books logged all-time and recently. Defaults to you; filter by any
-            reader or the whole family.
+            Books logged all-time and recently. Defaults to you; filter by any reader or
+            the whole family.
           </p>
         </section>
 
@@ -111,7 +109,10 @@ export default async function DashboardPage({
                 <li className="text-sm text-muted-foreground">No recent books.</li>
               )}
               {dash.stats.recent.map((book) => (
-                <li key={`${book.bookId}-${book.title}`} className="flex items-center justify-between gap-3">
+                <li
+                  key={`${book.bookId}-${book.title}`}
+                  className="flex items-center justify-between gap-3"
+                >
                   <span>{book.title}</span>
                   <Badge variant="secondary">{book.readCount}×</Badge>
                 </li>
@@ -125,7 +126,10 @@ export default async function DashboardPage({
                 <li className="text-sm text-muted-foreground">No books logged yet.</li>
               )}
               {dash.stats.allTime.map((book) => (
-                <li key={`${book.bookId}-${book.title}-all`} className="flex items-center justify-between gap-3">
+                <li
+                  key={`${book.bookId}-${book.title}-all`}
+                  className="flex items-center justify-between gap-3"
+                >
                   <span>{book.title}</span>
                   <Badge variant="secondary">{book.readCount}×</Badge>
                 </li>
