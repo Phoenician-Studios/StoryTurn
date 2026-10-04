@@ -10,7 +10,7 @@ let rid: string;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(
-    `set timezone = 'UTC'; create schema auth; create table auth.users (id uuid primary key, email text); create role authenticated; create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;`,
+    `set timezone = 'UTC'; create schema auth; create table auth.users (id uuid primary key, email text); create role authenticated; create role service_role; create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;`,
   );
   for (const file of [
     "001_init.sql",
@@ -18,7 +18,10 @@ beforeAll(async () => {
     "003_family_management.sql",
     "004_schedule_cancellation_intent.sql",
     "005_calendar_sequence.sql",
-    "006_prevent_self_role_changes.sql",
+    "006_schedule_books.sql",
+    "007_atomic_session_generation.sql",
+    "008_prevent_self_role_changes.sql",
+    "009_schedule_generation_lock.sql",
   ])
     await db.exec(
       readFileSync(`supabase/migrations/${file}`, "utf8").replace(
@@ -217,6 +220,79 @@ it("increments calendar revisions atomically even when restoring identical sessi
     );
     expect(result.rows[0].calendar_sequence).toBe(sequence);
   }
+});
+
+it("persists schedule book settings and rejects invalid counts", async () => {
+  await db.query("select set_config('test.uid', $1, false)", [owner]);
+  await db.query(
+    "select * from manage_schedule($1::uuid[], current_date, '19:30', 'UTC', 'after', false, 3, true)",
+    [[mid]],
+  );
+  const settings = (
+    await db.query(
+      "select books_per_session, assign_random_books from schedules where active",
+    )
+  ).rows[0];
+  expect(settings).toMatchObject({ books_per_session: 3, assign_random_books: true });
+  await expect(
+    db.query(
+      "select * from manage_schedule($1::uuid[], current_date, '19:30', 'UTC', 'after', false, 0, true)",
+      [[mid]],
+    ),
+  ).rejects.toThrow(/book settings/);
+});
+
+it("rolls back the whole generated night on book failure and succeeds on retry", async () => {
+  const schedule = (
+    await db.query<{ id: string }>("select id from schedules where active")
+  ).rows[0];
+  await db.query("insert into books(family_id,title) values ($1,'Atomic book')", [fid]);
+  await db.exec(`create function fail_book_assignment() returns trigger language plpgsql as $$ begin raise exception 'simulated book failure'; end; $$;
+    create trigger fail_books before insert on session_books for each row execute function fail_book_assignment();`);
+  const before = (await db.query("select count(*) from reading_sessions")).rows[0];
+  const assignmentsBefore = (await db.query("select count(*) from session_assignments"))
+    .rows[0];
+  await expect(
+    db.query("select generate_schedule_night($1, current_date + 30)", [schedule.id]),
+  ).rejects.toThrow(/simulated book failure/);
+  expect((await db.query("select count(*) from reading_sessions")).rows[0]).toEqual(
+    before,
+  );
+  expect((await db.query("select count(*) from session_assignments")).rows[0]).toEqual(
+    assignmentsBefore,
+  );
+  await db.exec(
+    "drop trigger fail_books on session_books; drop function fail_book_assignment()",
+  );
+  const generated = (
+    await db.query<{ id: string }>(
+      "select generate_schedule_night($1, current_date + 30) as id",
+      [schedule.id],
+    )
+  ).rows[0].id;
+  expect(generated).toBeTruthy();
+  expect(
+    (
+      await db.query("select book_id from session_books where session_id = $1", [
+        generated,
+      ])
+    ).rows,
+  ).toHaveLength(1);
+  expect(
+    (
+      await db.query("select member_id from session_assignments where session_id = $1", [
+        generated,
+      ])
+    ).rows,
+  ).toHaveLength(1);
+  expect(
+    (
+      await db.query<{ id: string | null }>(
+        "select generate_schedule_night($1, current_date + 30) as id",
+        [schedule.id],
+      )
+    ).rows[0].id,
+  ).toBeNull();
 });
 
 it("rejects self-demotion with another parent while allowing name edits", async () => {

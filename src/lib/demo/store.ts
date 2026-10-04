@@ -1,5 +1,8 @@
 import { paginateSessions } from "@/lib/domain/session-presentation";
-import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
+import {
+  assertScheduleSettings,
+  selectRandomBooks,
+} from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
 import {
@@ -236,6 +239,22 @@ export function ensureUpcomingSessions(daysAhead = 14): number {
         updatedAt: new Date().toISOString(),
       };
       state().sessions.push(session);
+      if (schedule.assignRandomBooks) {
+        for (const bookId of selectRandomBooks(
+          state()
+            .books.filter((book) => book.familyId === schedule.familyId)
+            .map((book) => book.id),
+          schedule.booksPerSession ?? 1,
+        )) {
+          state().sessionBooks.push({
+            id: id("sb"),
+            sessionId,
+            bookId,
+            titleFreeform: null,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
       state().assignments = applyReassignment({
         existing: state().assignments,
         sessionId,
@@ -254,6 +273,8 @@ export function saveSchedule(input: {
   timeLocal: string;
   timezone: string;
   bookTiming: "ahead" | "after";
+  booksPerSession?: number;
+  assignRandomBooks?: boolean;
 }): void {
   const member = getCurrentMember();
   if (!member) throw new Error("Join a family first");
@@ -336,6 +357,8 @@ export function saveSchedule(input: {
     timeLocal: input.timeLocal,
     timezone: input.timezone,
     bookTiming: input.bookTiming,
+    booksPerSession: input.booksPerSession ?? 1,
+    assignRandomBooks: input.assignRandomBooks ?? false,
     active: true,
     createdAt: new Date().toISOString(),
   });

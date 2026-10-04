@@ -114,6 +114,9 @@ export function mapSchedule(row: Row): Schedule {
     timeLocal: toTimeHm(str(row, "time_local")),
     timezone: str(row, "timezone"),
     bookTiming: timing === "ahead" ? "ahead" : "after",
+    booksPerSession:
+      typeof row.books_per_session === "number" ? row.books_per_session : 1,
+    assignRandomBooks: row.assign_random_books === true,
     active: Boolean(row.active),
     createdAt: str(row, "created_at"),
   };

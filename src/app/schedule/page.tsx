@@ -94,6 +94,30 @@ export default async function SchedulePage({
                   defaultValue={admin.schedule?.timeLocal ?? "19:30"}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="booksPerSession">Books per session</Label>
+                <Input
+                  id="booksPerSession"
+                  name="booksPerSession"
+                  type="number"
+                  min={1}
+                  step={1}
+                  required
+                  defaultValue={admin.schedule?.booksPerSession ?? 1}
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="assignRandomBooks"
+                  defaultChecked={admin.schedule?.assignRandomBooks ?? false}
+                />
+                Assign random books from the family library each night
+              </label>
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                Random assignments apply to new nights. If your library has fewer books,
+                we use the available books. Existing selections stay as they are.
+              </p>
               <p className="text-sm text-muted-foreground sm:col-span-2">
                 Choose books before reading, log them afterward, or do both. You can
                 update each night’s book list at any time.

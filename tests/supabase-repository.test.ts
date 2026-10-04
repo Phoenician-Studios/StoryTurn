@@ -26,7 +26,37 @@ function client() {
         error: null,
       }),
     },
-    rpc: async () => ({ data: fixture.changes, error: null }),
+    rpc: async (name: string, args: Row) => {
+      if (name !== "generate_schedule_night")
+        return { data: fixture.changes, error: null };
+      const schedule = fixture.tables.schedules.find(
+        (row) => row.id === args.target_schedule_id,
+      )!;
+      const id = `night-${args.night_date}`;
+      fixture.tables.reading_sessions.push({
+        id,
+        family_id: schedule.family_id,
+        schedule_id: schedule.id,
+        scheduled_for: `${args.night_date}T${schedule.time_local}:00+00:00`,
+        status: "scheduled",
+        ics_uid: id,
+      });
+      fixture.tables.session_assignments.push({
+        session_id: id,
+        member_id: "parent",
+        is_current: true,
+        is_original: true,
+      });
+      if (schedule.assign_random_books) {
+        fixture.tables.session_books.push(
+          ...fixture.tables.books
+            .filter((book) => book.family_id === schedule.family_id)
+            .slice(0, Number(schedule.books_per_session))
+            .map((book) => ({ session_id: id, book_id: book.id })),
+        );
+      }
+      return { data: id, error: null };
+    },
     from(table: string) {
       const filters: ((r: Row) => boolean)[] = [];
       let one = false;
@@ -248,4 +278,27 @@ it("clamps oversized page requests using the database count and handles empty fa
   const page = await getFamilySessionPage("999");
   expect(page.page).toBe(1);
   expect(page.items.map((s) => s.id)).toEqual(["only"]);
+});
+
+it("assigns only family library books to generated nights and keeps them on repeat runs", async () => {
+  Object.assign(fixture.tables.schedules[0], {
+    books_per_session: 2,
+    assign_random_books: true,
+  });
+  fixture.tables.books = [
+    { id: "a", family_id: "family", title: "A" },
+    { id: "b", family_id: "family", title: "B" },
+    { id: "other", family_id: "other-family", title: "Other" },
+  ];
+  fixture.tables.session_books = [];
+  expect(await ensureAllUpcomingSessions(1)).toBe(2);
+  for (const session of fixture.tables.reading_sessions) {
+    const books = fixture.tables.session_books.filter(
+      (book) => book.session_id === session.id,
+    );
+    expect(books.map((book) => book.book_id).sort()).toEqual(["a", "b"]);
+  }
+  const assigned = [...fixture.tables.session_books];
+  expect(await ensureAllUpcomingSessions(1)).toBe(0);
+  expect(fixture.tables.session_books).toEqual(assigned);
 });

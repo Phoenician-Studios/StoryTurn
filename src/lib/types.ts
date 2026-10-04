@@ -63,6 +63,8 @@ export interface Schedule {
   timeLocal: string; // HH:mm
   timezone: string;
   bookTiming: BookTiming;
+  booksPerSession?: number;
+  assignRandomBooks?: boolean;
   active: boolean;
   createdAt: string;
 }

@@ -482,28 +482,14 @@ async function insertGeneratedSessions(
     });
 
     for (const draft of drafts) {
-      const { data, error } = await supabase
-        .from("reading_sessions")
-        .insert({
-          family_id: schedule.familyId,
-          schedule_id: schedule.id,
-          scheduled_for: `${draft.scheduledFor}+00:00`,
-          status: "scheduled",
-          ics_uid: draft.icsUid,
-        })
-        .select("id")
-        .single();
-      assertNoError(error, "Could not create session");
-      const sessionId = String((data as Row).id);
-      const { error: assignmentError } = await supabase
-        .from("session_assignments")
-        .insert({
-          session_id: sessionId,
-          member_id: draft.memberId,
-          is_original: true,
-          is_current: true,
-        });
-      assertNoError(assignmentError, "Could not assign reader");
+      const { data, error } = await supabase.rpc("generate_schedule_night", {
+        target_schedule_id: schedule.id,
+        night_date: sessionDateKey(draft.scheduledFor),
+      });
+      assertNoError(error, "Could not generate session");
+      // Another generator may already have created this night.
+      if (!data) continue;
+      const sessionId = String(data);
       await sendInvite(supabase, sessionId, "REQUEST");
       created += 1;
     }
@@ -613,6 +599,8 @@ export async function saveSchedule(input: {
   timeLocal: string;
   timezone: string;
   bookTiming: "ahead" | "after";
+  booksPerSession?: number;
+  assignRandomBooks?: boolean;
 }): Promise<void> {
   const { supabase, member } = requireMember(await loadContext());
   requireOwner(member);
@@ -628,6 +616,8 @@ export async function saveSchedule(input: {
     zone: input.timezone,
     timing: input.bookTiming,
     deleting: false,
+    book_count: input.booksPerSession ?? 1,
+    random_books: input.assignRandomBooks ?? false,
   });
   assertNoError(error, "Could not save schedule");
   for (const changed of (data ?? []) as ScheduleChange[]) {

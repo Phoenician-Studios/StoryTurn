@@ -16,4 +16,3 @@ end;
 $$;
 revoke all on function public.update_family_member(uuid,text,text) from public;
 grant execute on function public.update_family_member(uuid,text,text) to authenticated;
-

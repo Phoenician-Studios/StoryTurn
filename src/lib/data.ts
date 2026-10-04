@@ -73,6 +73,8 @@ export async function saveSchedule(input: {
   timeLocal: string;
   timezone: string;
   bookTiming: "ahead" | "after";
+  booksPerSession?: number;
+  assignRandomBooks?: boolean;
 }) {
   return isDemoMode() ? demo.saveSchedule(input) : live.saveSchedule(input);
 }
