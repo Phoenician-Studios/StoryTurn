@@ -2,11 +2,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
 import { BookSearch } from "@/components/book-search";
-import {
-  getCurrentMember,
-  getCurrentUser,
-  getLibrary,
-} from "@/lib/data";
+import { getCurrentMember, getCurrentUser, getLibrary } from "@/lib/data";
 
 export default async function LibraryPage() {
   const user = await getCurrentUser();
@@ -29,7 +25,11 @@ export default async function LibraryPage() {
         <section className="story-panel mt-6 rounded-2xl p-5 animate-rise-delay">
           <h2 className="font-display text-xl">Find a book</h2>
           <div className="mt-4">
-            <BookSearch />
+            <BookSearch
+              collectionKeys={books.flatMap((book) =>
+                book.openLibraryKey ? [book.openLibraryKey] : [],
+              )}
+            />
           </div>
         </section>
 
