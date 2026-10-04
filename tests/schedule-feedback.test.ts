@@ -83,3 +83,26 @@ it("generates, edits, and deletes tonight using the schedule-local date", async 
   await store.deleteSchedule();
   expect(tonight.status).toBe("cancelled");
 });
+
+it("restores a removed reader with a newer calendar revision", () => {
+  const state = store.getDemoState();
+  const schedule = { ...state.schedules[0] };
+  const night = state.sessions.find(
+    (s) => s.status === "scheduled" && s.scheduledFor.startsWith("2026-10-04"),
+  )!;
+  store.saveSchedule({ ...schedule, readerRotationMemberIds: ["mem_jordan"] });
+  const cancellation = vi
+    .mocked(sendSessionInviteEmail)
+    .mock.calls.find(
+      ([input]) => input.icsUid === night.icsUid && input.method === "CANCEL",
+    )![0];
+  store.saveSchedule({ ...schedule, readerRotationMemberIds: ["mem_alex"] });
+  const restoration = vi
+    .mocked(sendSessionInviteEmail)
+    .mock.calls.filter(
+      ([input]) => input.icsUid === night.icsUid && input.method === "REQUEST",
+    )
+    .at(-1)![0];
+  expect(cancellation.sequence).toBeGreaterThan(0);
+  expect(restoration.sequence).toBeGreaterThan(cancellation.sequence);
+});

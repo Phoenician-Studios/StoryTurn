@@ -31,11 +31,11 @@ Product plan: [`docs/features/bedtime-readers-feature-plan.md`](docs/features/be
 
 If Supabase env vars are missing, or `FORCE_DEMO_MODE=1`, the app runs against an in-memory demo family:
 
-| Email | Role |
-|-------|------|
-| `alex@example.com` | Parent / owner |
-| `jordan@example.com` | Parent / reader |
-| `nana@example.com` | Grandparent / reader |
+| Email                | Role                 |
+| -------------------- | -------------------- |
+| `alex@example.com`   | Parent / owner       |
+| `jordan@example.com` | Parent / reader      |
+| `nana@example.com`   | Grandparent / reader |
 
 Invite code in the seed data: `RIVERA24`
 
@@ -60,7 +60,7 @@ npm run build
 See [`.env.example`](.env.example).
 
 1. Create a Supabase project; enable Email + Google providers and password recovery.
-2. Apply all files in `supabase/migrations/` in numeric order. Existing deployments must apply `003_family_management.sql` and `004_schedule_cancellation_intent.sql` before using parent invitations or schedule management.
+2. Apply all files in `supabase/migrations/` in numeric order. Existing deployments must apply `003_family_management.sql` `004_schedule_cancellation_intent.sql`, and `005_calendar_sequence.sql` before using parent invitations or schedule management.
 3. Set the Supabase, Plunk, and QStash keys in `.env.local`, then set `FORCE_DEMO_MODE=0` to use the live database.
 4. Configure QStash to `POST /api/cron/generate-sessions` daily (or call with `x-cron-secret: $CRON_SECRET` locally).
 5. Deploy on Vercel. Production uses `https://www.storyturn.app` (`storyturn.app` redirects to `www`). Set `NEXT_PUBLIC_APP_URL` to that URL and `FORCE_DEMO_MODE=0`. Auth callbacks use `${NEXT_PUBLIC_APP_URL}/auth/callback`, which must be allowed in the Supabase redirect list.

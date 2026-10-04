@@ -113,6 +113,7 @@ export interface ReadingSession {
   cancellationSource?: "schedule" | "individual" | null;
   notes: string | null;
   icsUid: string;
+  calendarSequence?: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -141,6 +141,7 @@ export function mapSession(row: Row): ReadingSession {
           : null,
     notes: strOrNull(row, "notes"),
     icsUid: str(row, "ics_uid"),
+    calendarSequence: Number(row.calendar_sequence ?? 0),
     createdAt: str(row, "created_at"),
     updatedAt: str(row, "updated_at"),
   };

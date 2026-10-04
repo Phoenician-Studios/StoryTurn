@@ -17,6 +17,7 @@ beforeAll(async () => {
     "002_family_bootstrap.sql",
     "003_family_management.sql",
     "004_schedule_cancellation_intent.sql",
+    "005_calendar_sequence.sql",
   ])
     await db.exec(
       readFileSync(`supabase/migrations/${file}`, "utf8").replace(
@@ -195,4 +196,24 @@ it("restores schedule cancellations when moving the start date back, but keeps i
     (await db.query<{ status: string }>("select status from reading_sessions")).rows[0]
       .status,
   ).toBe("cancelled");
+});
+
+it("increments calendar revisions atomically even when restoring identical session details", async () => {
+  const session = (
+    await db.query<{ id: string }>(
+      "insert into reading_sessions(family_id,scheduled_for,status,ics_uid) values ($1,current_date,'scheduled','revision-test') returning id",
+      [fid],
+    )
+  ).rows[0];
+  for (const [status, sequence] of [
+    ["cancelled", 1],
+    ["scheduled", 2],
+    ["scheduled", 3],
+  ] as const) {
+    const result = await db.query<{ calendar_sequence: number }>(
+      "update reading_sessions set status = $2, calendar_sequence = 0 where id = $1 returning calendar_sequence",
+      [session.id, status],
+    );
+    expect(result.rows[0].calendar_sequence).toBe(sequence);
+  }
 });

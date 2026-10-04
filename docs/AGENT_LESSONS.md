@@ -29,3 +29,10 @@
 - **Gap:** An invite cookie survived sign-out and demo account switches, and enrolled recipients lost invite context in a redirect without explanation.
 - **Going forward:** Preserve pending invites through initial authentication, clear them on sign-out, account switches, and completed family setup, and provide an explicit outcome when membership prevents accepting an invite. Test both new and enrolled recipients and account transitions.
 - **Pointers:** `src/app/join/route.ts`, `src/app/actions.ts`, `tests/invite-account-lifecycle.test.ts`
+
+### 2026-10-04 — Persist calendar revisions
+
+- **Source:** PR #3 · Greptile
+- **Gap:** A restored reader received REQUEST sequence 0 after CANCEL sequence 1 for the same calendar UID, causing clients to reject the restoration.
+- **Going forward:** Persist and atomically increment each session's calendar revision across edits, cancellations, and restorations. Test remove-and-restore cycles even when the clock does not advance.
+- **Pointers:** `supabase/migrations/005_calendar_sequence.sql`, `src/lib/session-mail.ts`, `tests/schedule-feedback.test.ts`
