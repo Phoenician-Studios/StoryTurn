@@ -42,7 +42,7 @@ export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
     const timer = setTimeout(async () => {
       setError(null);
       setResults([]);
-      if (!term) {
+      if (term.length < 2) {
         setPending(false);
         return;
       }
@@ -75,8 +75,12 @@ export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
           }}
           placeholder="Search by title or author"
           aria-label="Search books"
+          aria-describedby="book-search-hint"
         />
       </div>
+      <p id="book-search-hint" className="text-sm text-muted-foreground">
+        Type at least two characters to search.
+      </p>
       {pending && (
         <p role="status" className="text-sm text-muted-foreground">
           Searching…

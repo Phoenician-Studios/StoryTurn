@@ -117,6 +117,7 @@ it("debounces typing and ignores stale responses after clearing the input", asyn
       await vi.advanceTimersByTimeAsync(1);
     });
     expect(searchBooksAction).toHaveBeenCalledExactlyOnceWith("cats");
+    expect(screen.getByRole("status").textContent).toBe("Searching…");
     fireEvent.change(input, { target: { value: "" } });
     await act(async () => {
       resolve([
@@ -135,6 +136,40 @@ it("debounces typing and ignores stale responses after clearing the input", asyn
       await vi.advanceTimersByTimeAsync(350);
     });
     expect(searchBooksAction).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("skips short searches and displays errors after loading", async () => {
+  vi.useFakeTimers();
+  vi.mocked(searchBooksAction).mockClear();
+  let reject!: (error: Error) => void;
+  vi.mocked(searchBooksAction).mockImplementation(
+    () =>
+      new Promise((_, fail) => {
+        reject = fail;
+      }),
+  );
+  try {
+    render(createElement(BookSearch, { collectionKeys: [] }));
+    const input = screen.getByRole("textbox", { name: "Search books" });
+    fireEvent.change(input, { target: { value: " a " } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+    expect(searchBooksAction).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: " ab " } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+    expect(searchBooksAction).toHaveBeenCalledExactlyOnceWith("ab");
+    expect(screen.getByRole("status").textContent).toBe("Searching…");
+    await act(async () => {
+      reject(new Error("Search service unavailable"));
+    });
+    expect(screen.getByText("Search service unavailable")).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
   } finally {
     vi.useRealTimers();
   }

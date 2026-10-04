@@ -57,3 +57,10 @@
 - **Gap:** A restored reader received REQUEST sequence 0 after CANCEL sequence 1 for the same calendar UID, causing clients to reject the restoration.
 - **Going forward:** Persist and atomically increment each session's calendar revision across edits, cancellations, and restorations. Test remove-and-restore cycles even when the clock does not advance.
 - **Pointers:** `supabase/migrations/005_calendar_sequence.sql`, `src/lib/session-mail.ts`, `tests/schedule-feedback.test.ts`
+
+### 2026-10-04 — Cover automatic search states
+
+- **Source:** PR #11 · Greptile
+- **Gap:** Debounced search lacked a minimum term length and tests for visible loading and failure states.
+- **Going forward:** Guard short automatic searches and test loading, success, failure, and stale responses together.
+- **Pointers:** `src/components/book-search.tsx`, `tests/book-search.test.ts`
