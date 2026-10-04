@@ -1,3 +1,4 @@
+import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
@@ -604,6 +605,7 @@ export async function saveSchedule(input: {
 }): Promise<void> {
   const { supabase, member } = requireMember(await loadContext());
   requireOwner(member);
+  assertScheduleSettings(input);
   if (input.readerRotationMemberIds.length === 0) {
     throw new Error("Pick at least one reader");
   }

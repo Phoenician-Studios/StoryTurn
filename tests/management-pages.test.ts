@@ -25,6 +25,9 @@ it("offers parent schedule editing and deletion", async () => {
   const html = renderToStaticMarkup(await SchedulePage());
   expect(html).toContain("Edit rotation");
   expect(html).toContain("Delete schedule");
+  expect(html).not.toContain("Choose your timezone");
+  expect(html).not.toContain("Search city or region");
+  expect(html).toContain('name="timezone"');
 });
 it("offers parent invitations, reader editing, and child editing/removal", async () => {
   const html = renderToStaticMarkup(

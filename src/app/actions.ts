@@ -168,7 +168,7 @@ export async function saveScheduleAction(formData: FormData) {
     readerRotationMemberIds: readers,
     startDate: String(formData.get("startDate")),
     timeLocal: String(formData.get("timeLocal")),
-    timezone: String(formData.get("timezone") || "America/Los_Angeles"),
+    timezone: String(formData.get("timezone") ?? ""),
     // Legacy storage field; book logging is always flexible.
     bookTiming: "after",
   });
