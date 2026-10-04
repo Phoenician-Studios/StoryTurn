@@ -1,7 +1,8 @@
+import { dateInTimezone } from "@/lib/domain/calendar-date";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
 import { generateInviteCode } from "@/lib/domain/invites";
-import { addDays, formatDateOnly } from "@/lib/domain/rotation";
+import { addDays } from "@/lib/domain/rotation";
 import {
   assertTransition,
   generateSessionsFromSchedule,
@@ -42,6 +43,12 @@ import type {
 } from "@/lib/types";
 
 type Row = Record<string, unknown>;
+interface ScheduleChange {
+  session_id: string;
+  cancelled: boolean;
+  removed_member_ids: string[];
+  previous_scheduled_for: string;
+}
 
 function assertNoError(error: { message: string } | null, fallback: string): void {
   if (error) throw new Error(error.message || fallback);
@@ -390,6 +397,7 @@ async function sendInvite(
   supabase: SupabaseClient,
   sessionId: string,
   method: "REQUEST" | "CANCEL",
+  previous?: { memberIds: string[]; scheduledFor: string },
 ): Promise<void> {
   const { data: sessionRow, error } = await supabase
     .from("reading_sessions")
@@ -416,14 +424,14 @@ async function sendInvite(
     "Could not load assignees",
   );
   const readers = await familyReaders(supabase, session.familyId);
-  const attendees = assignments
-    .map((assignment) => readers.find((reader) => reader.id === assignment.memberId))
+  const attendees = (previous?.memberIds ?? assignments.map((a) => a.memberId))
+    .map((memberId) => readers.find((reader) => reader.id === memberId))
     .filter((reader): reader is FamilyMember => Boolean(reader))
     .map((reader) => ({ email: reader.email, displayName: reader.displayName }));
 
   const sent = await sendSessionInviteEmail({
     familyName: family.name,
-    scheduledFor: session.scheduledFor,
+    scheduledFor: previous?.scheduledFor ?? session.scheduledFor,
     icsUid: session.icsUid,
     attendees,
     method,
@@ -438,11 +446,11 @@ async function insertGeneratedSessions(
   schedules: Schedule[],
   daysAhead: number,
 ): Promise<number> {
-  const today = formatDateOnly(new Date());
-  const through = addDays(today, daysAhead);
   let created = 0;
 
   for (const schedule of schedules) {
+    const today = dateInTimezone(new Date(), schedule.timezone);
+    const through = addDays(today, daysAhead);
     const { data: existingRows, error: existingError } = await supabase
       .from("reading_sessions")
       .select("scheduled_for")
@@ -608,12 +616,13 @@ export async function saveSchedule(input: {
     deleting: false,
   });
   assertNoError(error, "Could not save schedule");
-  for (const changed of (data ?? []) as { session_id: string; cancelled: boolean }[]) {
-    await sendInvite(
-      supabase,
-      changed.session_id,
-      changed.cancelled ? "CANCEL" : "REQUEST",
-    );
+  for (const changed of (data ?? []) as ScheduleChange[]) {
+    if (changed.removed_member_ids.length)
+      await sendInvite(supabase, changed.session_id, "CANCEL", {
+        memberIds: changed.removed_member_ids,
+        scheduledFor: toWallClock(changed.previous_scheduled_for),
+      });
+    if (!changed.cancelled) await sendInvite(supabase, changed.session_id, "REQUEST");
   }
   const admin = await getFamilyAdmin();
   if (admin.schedule) await insertGeneratedSessions(supabase, [admin.schedule], 14);
@@ -660,7 +669,11 @@ export async function cancelSession(sessionId: string): Promise<void> {
   const { supabase } = requireMember(await loadContext());
   const { error } = await supabase
     .from("reading_sessions")
-    .update({ status: "cancelled", updated_at: new Date().toISOString() })
+    .update({
+      status: "cancelled",
+      cancellation_source: "individual",
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", sessionId);
   assertNoError(error, "Could not cancel session");
   await sendInvite(supabase, sessionId, "CANCEL");
@@ -699,6 +712,7 @@ export async function updateSession(input: {
     .from("reading_sessions")
     .update({
       status: input.status,
+      cancellation_source: input.status === "cancelled" ? "individual" : null,
       notes: input.notes,
       updated_at: new Date().toISOString(),
     })
@@ -777,8 +791,13 @@ export async function deleteSchedule(): Promise<void> {
   requireOwner(member);
   const { data, error } = await supabase.rpc("manage_schedule", { deleting: true });
   assertNoError(error, "Could not delete schedule");
-  for (const row of (data ?? []) as { session_id: string }[])
-    await sendInvite(supabase, row.session_id, "CANCEL");
+  for (const row of (data ?? []) as ScheduleChange[]) {
+    if (row.removed_member_ids.length)
+      await sendInvite(supabase, row.session_id, "CANCEL", {
+        memberIds: row.removed_member_ids,
+        scheduledFor: toWallClock(row.previous_scheduled_for),
+      });
+  }
 }
 
 export async function updateMember(

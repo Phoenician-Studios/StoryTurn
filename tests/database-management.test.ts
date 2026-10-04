@@ -16,6 +16,7 @@ beforeAll(async () => {
     "001_init.sql",
     "002_family_bootstrap.sql",
     "003_family_management.sql",
+    "004_schedule_cancellation_intent.sql",
   ])
     await db.exec(
       readFileSync(`supabase/migrations/${file}`, "utf8").replace(
@@ -160,4 +161,38 @@ it("restarts a deleted schedule using its original session IDs", async () => {
       )
     ).rows.map((r) => r.id),
   ).toEqual(before);
+});
+
+it("returns removed readers for calendar cancellations", async () => {
+  const result = await db.query<{ removed_member_ids: string[] }>(
+    "select * from manage_schedule($1::uuid[], current_date, '20:00', 'America/Chicago', 'after')",
+    [[rid]],
+  );
+  expect(result.rows[0].removed_member_ids).toEqual([mid]);
+});
+it("restores schedule cancellations when moving the start date back, but keeps individual cancellations", async () => {
+  await db.query(
+    "select * from manage_schedule($1::uuid[], current_date + 1, '20:00', 'America/Chicago', 'after')",
+    [[rid]],
+  );
+  await db.query(
+    "select * from manage_schedule($1::uuid[], current_date, '20:00', 'America/Chicago', 'after')",
+    [[rid]],
+  );
+  expect(
+    (await db.query<{ status: string }>("select status from reading_sessions")).rows[0]
+      .status,
+  ).toBe("scheduled");
+  await db.query(
+    "update reading_sessions set status='cancelled', cancellation_source='individual'",
+  );
+  await db.query("select * from manage_schedule(deleting => true)");
+  await db.query(
+    "select * from manage_schedule($1::uuid[], current_date, '20:00', 'America/Chicago', 'after')",
+    [[rid]],
+  );
+  expect(
+    (await db.query<{ status: string }>("select status from reading_sessions")).rows[0]
+      .status,
+  ).toBe("cancelled");
 });
