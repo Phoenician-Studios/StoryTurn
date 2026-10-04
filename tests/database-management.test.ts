@@ -21,6 +21,7 @@ beforeAll(async () => {
     "006_schedule_books.sql",
     "007_atomic_session_generation.sql",
     "008_prevent_self_role_changes.sql",
+    "009_schedule_generation_lock.sql",
   ])
     await db.exec(
       readFileSync(`supabase/migrations/${file}`, "utf8").replace(

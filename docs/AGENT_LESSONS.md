@@ -85,3 +85,10 @@
 - **Gap:** Debounced search lacked a minimum term length and tests for visible loading and failure states.
 - **Going forward:** Guard short automatic searches and test loading, success, failure, and stale responses together.
 - **Pointers:** `src/components/book-search.tsx`, `tests/book-search.test.ts`
+
+### 2026-10-04 — Include foreign-key locks in concurrency review
+
+- **Source:** PR #12 · Greptile
+- **Gap:** Night generation locked a schedule before its family foreign-key check, while editing held an incompatible family lock before updating the schedule.
+- **Going forward:** Account for implicit foreign-key KEY SHARE locks alongside explicit row locks. Use NO KEY UPDATE when serializing edits that do not change parent keys, and verify overlapping transactions.
+- **Pointers:** `supabase/migrations/009_schedule_generation_lock.sql`, `manage_schedule`, `generate_schedule_night`
