@@ -2,15 +2,23 @@ import { addDays } from "@/lib/domain/rotation";
 import { sessionDateKey } from "@/lib/domain/sessions";
 import { dateInTimezone } from "@/lib/domain/timezones";
 
-export function paginateSessions<T>(sessions: T[], requestedPage?: string | string[]) {
-  const total = sessions.length;
+export function sessionPageBounds(total: number, requestedPage?: string | string[]) {
   const pageCount = Math.max(1, Math.ceil(total / 10));
   const parsed =
     typeof requestedPage === "string" && /^[1-9]\d*$/.test(requestedPage)
       ? Number(requestedPage)
       : 1;
   const page = Math.min(pageCount, parsed);
-  return { items: sessions.slice((page - 1) * 10, page * 10), page, pageCount, total };
+  const from = (page - 1) * 10;
+  return { page, pageCount, total, from, to: from + 9 };
+}
+
+export function paginateSessions<T>(sessions: T[], requestedPage?: string | string[]) {
+  const { page, pageCount, total, from, to } = sessionPageBounds(
+    sessions.length,
+    requestedPage,
+  );
+  return { items: sessions.slice(from, to + 1), page, pageCount, total };
 }
 
 export function upcomingSessionDay(

@@ -1,4 +1,4 @@
-import { dateInTimezone } from "@/lib/domain/timezones";
+import { paginateSessions } from "@/lib/domain/session-presentation";
 import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
@@ -434,7 +434,9 @@ export function listFamilySessions() {
   if (!member) return [];
   return state()
     .sessions.filter((s) => s.familyId === member.familyId)
-    .sort((a, b) => b.scheduledFor.localeCompare(a.scheduledFor));
+    .sort(
+      (a, b) => b.scheduledFor.localeCompare(a.scheduledFor) || b.id.localeCompare(a.id),
+    );
 }
 
 export function listFamilyAssignments() {
@@ -689,4 +691,13 @@ export function deleteKid(kidId: string): void {
   const kid = state().kids.find((k) => k.id === kidId && k.familyId === owner.familyId);
   if (!kid) throw new Error("Child not found");
   state().kids = state().kids.filter((k) => k.id !== kid.id);
+}
+
+export function getFamilySessionPage(requestedPage?: string | string[]) {
+  const pagination = paginateSessions(listFamilySessions(), requestedPage);
+  const ids = new Set(pagination.items.map((s) => s.id));
+  const assignments = state().assignments.filter(
+    (a) => ids.has(a.sessionId) && a.isCurrent,
+  );
+  return { ...pagination, assignments };
 }

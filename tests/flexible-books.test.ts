@@ -10,8 +10,7 @@ vi.mock("@/lib/data", () => ({
   getCurrentUser: store.getCurrentUser,
   getCurrentMember: store.getCurrentMember,
   getFamilyAdmin: store.getFamilyAdmin,
-  listFamilySessions: store.listFamilySessions,
-  listFamilyAssignments: store.listFamilyAssignments,
+  getFamilySessionPage: store.getFamilySessionPage,
 }));
 import SchedulePage from "@/app/schedule/page";
 beforeEach(() => store.resetDemoStore());

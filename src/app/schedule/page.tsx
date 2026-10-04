@@ -10,10 +10,8 @@ import {
   getCurrentMember,
   getCurrentUser,
   getFamilyAdmin,
-  listFamilyAssignments,
-  listFamilySessions,
+  getFamilySessionPage,
 } from "@/lib/data";
-import { paginateSessions } from "@/lib/domain/session-presentation";
 import { sessionDateKey } from "@/lib/domain/sessions";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -29,12 +27,9 @@ export default async function SchedulePage({
   if (!member) redirect("/onboarding");
   const admin = await getFamilyAdmin();
   if (!admin) redirect("/onboarding");
-  const [{ page: requestedPage }, allSessions, assignments] = await Promise.all([
-    searchParams,
-    listFamilySessions(),
-    listFamilyAssignments(),
-  ]);
-  const pagination = paginateSessions(allSessions, requestedPage);
+  const { page: requestedPage } = await searchParams;
+  const pagination = await getFamilySessionPage(requestedPage);
+  const assignments = pagination.assignments;
   const sessions = pagination.items;
   const names = Object.fromEntries(admin.readers.map((r) => [r.id, r.displayName]));
 

@@ -10,8 +10,7 @@ vi.mock("@/lib/data", () => ({
   getCurrentUser: store.getCurrentUser,
   getCurrentMember: store.getCurrentMember,
   getFamilyAdmin: store.getFamilyAdmin,
-  listFamilySessions: store.listFamilySessions,
-  listFamilyAssignments: store.listFamilyAssignments,
+  getFamilySessionPage: store.getFamilySessionPage,
   getHomeContext: store.getHomeContext,
 }));
 import SchedulePage from "@/app/schedule/page";
@@ -72,4 +71,44 @@ it("shows the final partial page and an empty list without invalid navigation", 
   );
   expect(empty).toContain("No reading sessions yet.");
   expect(empty).not.toContain('aria-label="Session pages"');
+});
+
+it("can reach sessions after the thousandth row through the schedule page", async () => {
+  const state = store.getDemoState();
+  const template = { ...state.sessions[0] };
+  state.sessions = Array.from({ length: 1005 }, (_, i) => ({
+    ...template,
+    id: `night-${i}`,
+    scheduledFor: new Date(Date.UTC(2026, 0, 1) + i * 86400000).toISOString(),
+  }));
+  state.assignments = [
+    {
+      id: "oldest",
+      sessionId: "night-0",
+      memberId: "mem_jordan",
+      isCurrent: true,
+      isOriginal: true,
+      createdAt: "",
+    },
+  ];
+  const html = renderToStaticMarkup(
+    await SchedulePage({ searchParams: Promise.resolve({ page: "101" }) }),
+  );
+  expect(html).toContain("Page 101 of 101");
+  expect(html).toContain("1005 sessions");
+  expect(html).toContain("/sessions/night-0");
+  expect(html).toContain("Jordan");
+  expect((html.match(/href="\/sessions\//g) ?? []).length).toBe(5);
+});
+it("generates tonight before rendering its local-date label", async () => {
+  const state = store.getDemoState();
+  state.sessions = [];
+  state.assignments = [];
+  Object.assign(state.schedules[0], {
+    timezone: "America/Chicago",
+    startDate: "2026-10-04",
+    readerRotationMemberIds: ["mem_alex"],
+  });
+  store.ensureUpcomingSessions(1);
+  expect(renderToStaticMarkup(await HomePage())).toContain("Tonight at");
 });

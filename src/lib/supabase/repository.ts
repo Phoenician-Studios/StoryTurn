@@ -1,4 +1,4 @@
-import { dateInTimezone } from "@/lib/domain/timezones";
+import { sessionPageBounds } from "@/lib/domain/session-presentation";
 import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
@@ -854,4 +854,47 @@ export async function deleteKid(kidId: string): Promise<void> {
     .select("id");
   assertNoError(error, "Could not delete child");
   if (!data?.length) throw new Error("Child not found");
+}
+
+export async function getFamilySessionPage(requestedPage?: string | string[]) {
+  const { supabase, member } = requireMember(await loadContext());
+  const { count, error } = await supabase
+    .from("reading_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("family_id", member.familyId);
+  assertNoError(error, "Could not count sessions");
+  const { page, pageCount, total, from, to } = sessionPageBounds(
+    count ?? 0,
+    requestedPage,
+  );
+  const items =
+    total === 0
+      ? []
+      : await rows(
+          supabase
+            .from("reading_sessions")
+            .select("*")
+            .eq("family_id", member.familyId)
+            .order("scheduled_for", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, to),
+          mapSession,
+          "Could not load session page",
+        );
+  const assignments =
+    items.length === 0
+      ? []
+      : await rows(
+          supabase
+            .from("session_assignments")
+            .select("*")
+            .in(
+              "session_id",
+              items.map((s) => s.id),
+            )
+            .eq("is_current", true),
+          mapAssignment,
+          "Could not load session readers",
+        );
+  return { items, assignments, page, pageCount, total };
 }

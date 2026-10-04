@@ -1,10 +1,15 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { sendSessionInviteEmail } from "@/lib/session-mail";
-import { ensureAllUpcomingSessions, saveSchedule } from "@/lib/supabase/repository";
+import {
+  ensureAllUpcomingSessions,
+  saveSchedule,
+  getFamilySessionPage,
+} from "@/lib/supabase/repository";
 type Row = Record<string, unknown>;
 const fixture = vi.hoisted(() => ({
   tables: {} as Record<string, Row[]>,
   changes: [] as Row[],
+  ranges: [] as { table: string; start: number; end: number }[],
 }));
 function client() {
   return {
@@ -25,9 +30,15 @@ function client() {
     from(table: string) {
       const filters: ((r: Row) => boolean)[] = [];
       let one = false;
-      let limit = Infinity;
+      let limit = 1000;
+      let offset = 0;
+      let head = false;
+      const ordering: { key: string; ascending: boolean }[] = [];
       const builder = {
-        select: () => builder,
+        select: (_columns?: string, options?: { count?: string; head?: boolean }) => {
+          head = options?.head ?? false;
+          return builder;
+        },
         eq: (key: string, value: unknown) => {
           filters.push((r) => r[key] === value);
           return builder;
@@ -36,7 +47,16 @@ function client() {
           filters.push((r) => values.includes(r[key]));
           return builder;
         },
-        order: () => builder,
+        order: (key: string, options?: { ascending: boolean }) => {
+          ordering.push({ key, ascending: options?.ascending ?? true });
+          return builder;
+        },
+        range: (start: number, end: number) => {
+          offset = start;
+          limit = end - start + 1;
+          fixture.ranges.push({ table, start, end });
+          return builder;
+        },
         limit: (value: number) => {
           limit = value;
           return builder;
@@ -63,11 +83,19 @@ function client() {
         then: (
           resolve: (result: { data: Row[] | Row | null; error: null }) => unknown,
         ) => {
-          const data = (fixture.tables[table] ?? [])
+          const matched = (fixture.tables[table] ?? [])
             .filter((r) => filters.every((f) => f(r)))
-            .slice(0, limit);
+            .sort((a, b) => {
+              for (const order of ordering) {
+                const result = String(a[order.key]).localeCompare(String(b[order.key]));
+                if (result) return order.ascending ? result : -result;
+              }
+              return 0;
+            });
+          const data = matched.slice(offset, offset + limit);
           return Promise.resolve({
-            data: one ? (data.at(-1) ?? null) : data,
+            data: head ? null : one ? (data.at(-1) ?? null) : data,
+            count: matched.length,
             error: null,
           }).then(resolve);
         },
@@ -86,6 +114,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-05T02:00:00Z"));
   vi.clearAllMocks();
   fixture.changes = [];
+  fixture.ranges = [];
   fixture.tables = {
     schedules: [
       {
@@ -170,4 +199,53 @@ it("uses the RPC's former readers to send cancellations before updated requests"
     method: "REQUEST",
     attendees: [{ email: "reader@example.com" }],
   });
+});
+
+it("fetches session pages beyond the API row limit with the exact family count", async () => {
+  fixture.tables.reading_sessions = Array.from({ length: 1005 }, (_, i) => ({
+    id: `night-${String(i).padStart(4, "0")}`,
+    family_id: "family",
+    scheduled_for: new Date(Date.UTC(2026, 0, 1) + i * 86400000).toISOString(),
+    status: "scheduled",
+  }));
+  fixture.tables.reading_sessions.push({
+    id: "foreign",
+    family_id: "other",
+    scheduled_for: "2040-01-01T19:30Z",
+    status: "scheduled",
+  });
+  fixture.tables.session_assignments = [
+    { id: "a", session_id: "night-0000", member_id: "reader", is_current: true },
+    { id: "b", session_id: "night-1004", member_id: "parent", is_current: true },
+  ];
+  const page = await getFamilySessionPage("101");
+  expect(page).toMatchObject({ page: 101, pageCount: 101, total: 1005 });
+  expect(page.items).toHaveLength(5);
+  expect(page.items.at(-1)?.id).toBe("night-0000");
+  expect(page.assignments.map((a) => a.sessionId)).toEqual(["night-0000"]);
+  expect(fixture.ranges).toContainEqual({
+    table: "reading_sessions",
+    start: 1000,
+    end: 1009,
+  });
+});
+it("clamps oversized page requests using the database count and handles empty families", async () => {
+  expect(await getFamilySessionPage("999")).toMatchObject({
+    items: [],
+    assignments: [],
+    page: 1,
+    pageCount: 1,
+    total: 0,
+  });
+  fixture.tables.reading_sessions = [
+    {
+      id: "only",
+      family_id: "family",
+      scheduled_for: "2026-10-05T19:30:00Z",
+      status: "scheduled",
+    },
+  ];
+  const page = await getFamilySessionPage("999");
+  expect(page.page).toBe(1);
+  expect(page.items.map((s) => s.id)).toEqual(["only"]);
 });
