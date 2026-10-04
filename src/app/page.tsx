@@ -1,0 +1,137 @@
+export const dynamic = "force-dynamic";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AppNav } from "@/components/app-nav";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  getDemoState,
+  getHomeContext,
+} from "@/lib/demo/store";
+import { sessionDateKey } from "@/lib/domain/sessions";
+import {
+  currentReaderLabels,
+  originalReaderLabels,
+  wasCorrected,
+} from "@/lib/domain/corrections";
+
+export default function HomePage() {
+  const home = getHomeContext();
+  if (!home.user) redirect("/login");
+  if (!home.member) redirect("/onboarding");
+
+  const state = getDemoState();
+  const memberNames = Object.fromEntries(
+    home.readers.map((r) => [r.id, r.displayName]),
+  );
+
+  const next = home.nextSession;
+  const assignments = next
+    ? state.assignments.filter((a) => a.sessionId === next.id)
+    : [];
+  const books = next
+    ? state.sessionBooks.filter((b) => b.sessionId === next.id)
+    : [];
+  const corrected = next
+    ? wasCorrected({
+        assignments: state.assignments,
+        corrections: state.corrections,
+        sessionId: next.id,
+      })
+    : false;
+
+  return (
+    <div className="flex min-h-full flex-1 flex-col">
+      <AppNav displayName={home.member.displayName} />
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8">
+        <section className="animate-rise max-w-2xl">
+          <p className="font-display text-4xl text-primary md:text-5xl">StoryTurn</p>
+          <p className="mt-2 text-muted-foreground">
+            {home.family?.name} · reading with{" "}
+            {home.kids.map((k) => k.name).join(" & ") || "your kids"}
+          </p>
+        </section>
+
+        <section className="story-panel animate-rise-delay mt-8 rounded-3xl p-6 md:p-8">
+          {next ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="bg-accent text-accent-foreground hover:bg-accent">
+                  Your next night
+                </Badge>
+                {corrected && (
+                  <Badge variant="outline">Corrected record</Badge>
+                )}
+              </div>
+              <h1 className="font-display mt-4 text-3xl tracking-tight md:text-4xl">
+                {sessionDateKey(next.scheduledFor)} at{" "}
+                {next.scheduledFor.slice(11, 16)}
+              </h1>
+              <p className="mt-3 text-lg text-foreground/90">
+                Reader:{" "}
+                {currentReaderLabels({
+                  assignments,
+                  memberNames,
+                  sessionId: next.id,
+                }).join(", ")}
+              </p>
+              {corrected && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Originally assigned:{" "}
+                  {originalReaderLabels({
+                    assignments,
+                    memberNames,
+                    sessionId: next.id,
+                  }).join(", ")}
+                </p>
+              )}
+              <p className="mt-4 text-muted-foreground">
+                {books.length > 0
+                  ? `Books lined up: ${books
+                      .map(
+                        (b) =>
+                          b.titleFreeform ??
+                          state.books.find((x) => x.id === b.bookId)?.title ??
+                          "Untitled",
+                      )
+                      .join(", ")}`
+                  : "Books can be chosen ahead of time or logged after reading."}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href={`/sessions/${next.id}`}
+                  className={cn(buttonVariants(), "animate-glow")}
+                >
+                  Open session
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  View reading stats
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="font-display text-3xl tracking-tight">
+                No upcoming night assigned to you
+              </h1>
+              <p className="mt-3 text-muted-foreground">
+                Check the family schedule or ask an owner to add you to the
+                rotation.
+              </p>
+              <Link
+                href="/schedule"
+                className={cn(buttonVariants(), "mt-6")}
+              >
+                Review schedule
+              </Link>
+            </>
+          )}
+        </section>
+      </main>
+    </div>
+  );
+}
