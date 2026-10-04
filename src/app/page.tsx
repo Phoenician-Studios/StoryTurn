@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getHomeContext } from "@/lib/data";
-import { sessionDateKey } from "@/lib/domain/sessions";
+import { upcomingSessionDay } from "@/lib/domain/session-presentation";
 import {
   currentReaderLabels,
   originalReaderLabels,
@@ -18,19 +18,17 @@ export default async function HomePage() {
   if (!home.user) redirect("/login");
   if (!home.member) redirect("/onboarding");
 
-  const memberNames = Object.fromEntries(
-    home.readers.map((r) => [r.id, r.displayName]),
-  );
+  const memberNames = Object.fromEntries(home.readers.map((r) => [r.id, r.displayName]));
 
   const next = home.nextSession;
   const assignments = home.assignments;
   const books = home.sessionBooks;
   const corrected = next
     ? wasCorrected({
-      assignments: home.assignments,
-      corrections: home.corrections,
-      sessionId: next.id,
-    })
+        assignments: home.assignments,
+        corrections: home.corrections,
+        sessionId: next.id,
+      })
     : false;
 
   return (
@@ -52,12 +50,10 @@ export default async function HomePage() {
                 <Badge className="bg-accent text-accent-foreground hover:bg-accent">
                   Your next night
                 </Badge>
-                {corrected && (
-                  <Badge variant="outline">Corrected record</Badge>
-                )}
+                {corrected && <Badge variant="outline">Corrected record</Badge>}
               </div>
               <h1 className="font-display mt-4 text-3xl tracking-tight md:text-4xl">
-                {sessionDateKey(next.scheduledFor)} at{" "}
+                {upcomingSessionDay(next.scheduledFor, home.timezone)} at{" "}
                 {next.scheduledFor.slice(11, 16)}
               </h1>
               <p className="mt-3 text-lg text-foreground/90">
@@ -81,13 +77,13 @@ export default async function HomePage() {
               <p className="mt-4 text-muted-foreground">
                 {books.length > 0
                   ? `Books lined up: ${books
-                    .map(
-                      (b) =>
-                        b.titleFreeform ??
-                        home.books.find((x) => x.id === b.bookId)?.title ??
-                        "Untitled",
-                    )
-                    .join(", ")}`
+                      .map(
+                        (b) =>
+                          b.titleFreeform ??
+                          home.books.find((x) => x.id === b.bookId)?.title ??
+                          "Untitled",
+                      )
+                      .join(", ")}`
                   : "Books can be chosen ahead of time or logged after reading."}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -111,13 +107,9 @@ export default async function HomePage() {
                 No upcoming night assigned to you
               </h1>
               <p className="mt-3 text-muted-foreground">
-                Check the family schedule or ask an owner to add you to the
-                rotation.
+                Check the family schedule or ask an owner to add you to the rotation.
               </p>
-              <Link
-                href="/schedule"
-                className={cn(buttonVariants(), "mt-6")}
-              >
+              <Link href="/schedule" className={cn(buttonVariants(), "mt-6")}>
                 Review schedule
               </Link>
             </>

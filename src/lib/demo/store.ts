@@ -1,3 +1,4 @@
+import { dateInTimezone } from "@/lib/domain/timezones";
 import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
 import {
@@ -364,6 +365,7 @@ export function getHomeContext() {
       user,
       member,
       nextSession: null as ReadingSession | null,
+      timezone: "UTC",
       family: null,
       kids: [] as Kid[],
       readers: [] as FamilyMember[],
@@ -374,16 +376,21 @@ export function getHomeContext() {
     };
   }
   const family = state().families.find((f) => f.id === member.familyId) ?? null;
+  const schedules = state().schedules.filter((s) => s.familyId === member.familyId);
+  const timezone = schedules.find((s) => s.active)?.timezone ?? "UTC";
   const nextSession = nextSessionForMember({
     sessions: state().sessions.filter((s) => s.familyId === member.familyId),
     assignments: state().assignments,
     memberId: member.id,
+    nowIso: dateInTimezone(new Date(), timezone),
   });
   return {
     user,
     member,
     family,
     nextSession,
+    timezone:
+      schedules.find((s) => s.id === nextSession?.scheduleId)?.timezone ?? timezone,
     kids: state().kids.filter((k) => k.familyId === member.familyId),
     readers: state().members.filter((m) => m.familyId === member.familyId),
     assignments: nextSession

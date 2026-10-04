@@ -1,3 +1,4 @@
+import { dateInTimezone } from "@/lib/domain/timezones";
 import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
@@ -171,6 +172,7 @@ export async function getHomeContext() {
       user: ctx.account,
       member: ctx.member,
       nextSession: null as ReadingSession | null,
+      timezone: "UTC",
       family: null as Family | null,
       kids: [] as Kid[],
       readers: [] as FamilyMember[],
@@ -182,7 +184,7 @@ export async function getHomeContext() {
   }
 
   const { supabase, member } = ctx;
-  const [familyRow, kids, readers, sessions] = await Promise.all([
+  const [familyRow, kids, readers, sessions, schedules] = await Promise.all([
     supabase.from("families").select("*").eq("id", member.familyId).maybeSingle(),
     rows(
       supabase.from("kids").select("*").eq("family_id", member.familyId),
@@ -191,6 +193,11 @@ export async function getHomeContext() {
     ),
     familyReaders(supabase, member.familyId),
     familySessions(supabase, member.familyId),
+    rows(
+      supabase.from("schedules").select("*").eq("family_id", member.familyId),
+      mapSchedule,
+      "Could not load schedules",
+    ),
   ]);
   assertNoError(familyRow.error, "Could not load family");
 
@@ -198,10 +205,12 @@ export async function getHomeContext() {
     supabase,
     sessions.map((session) => session.id),
   );
+  const timezone = schedules.find((s) => s.active)?.timezone ?? "UTC";
   const nextSession = nextSessionForMember({
     sessions,
     assignments,
     memberId: member.id,
+    nowIso: dateInTimezone(new Date(), timezone),
   });
 
   const [sessionBooks, corrections, books] = nextSession
@@ -232,6 +241,8 @@ export async function getHomeContext() {
     member,
     family: familyRow.data ? mapFamily(familyRow.data as Row) : null,
     nextSession,
+    timezone:
+      schedules.find((s) => s.id === nextSession?.scheduleId)?.timezone ?? timezone,
     kids,
     readers,
     assignments: nextSession

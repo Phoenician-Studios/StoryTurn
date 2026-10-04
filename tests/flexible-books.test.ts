@@ -16,7 +16,9 @@ vi.mock("@/lib/data", () => ({
 import SchedulePage from "@/app/schedule/page";
 beforeEach(() => store.resetDemoStore());
 it("explains mixed logging instead of forcing one timing choice", async () => {
-  const html = renderToStaticMarkup(await SchedulePage());
+  const html = renderToStaticMarkup(
+    await SchedulePage({ searchParams: Promise.resolve({}) }),
+  );
   expect(html).not.toContain('name="bookTiming"');
   expect(html).toContain("Choose books before reading, log them afterward, or do both.");
 });
