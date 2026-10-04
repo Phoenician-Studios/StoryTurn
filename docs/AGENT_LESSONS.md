@@ -71,3 +71,10 @@
 - **Gap:** Replacing native selects with JavaScript menus prevented choosing parent invitations before hydration or without JavaScript.
 - **Going forward:** Provide a usable server-rendered native select, upgrade after hydration, and test that a choice made during page load survives the upgrade.
 - **Pointers:** `src/components/form-select.tsx`, `tests/form-select.test.ts`
+
+### 2026-10-04 — Cover automatic search states
+
+- **Source:** PR #11 · Greptile
+- **Gap:** Debounced search lacked a minimum term length and tests for visible loading and failure states.
+- **Going forward:** Guard short automatic searches and test loading, success, failure, and stale responses together.
+- **Pointers:** `src/components/book-search.tsx`, `tests/book-search.test.ts`

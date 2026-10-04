@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { addBookAction, searchBooksAction } from "@/app/actions";
@@ -34,35 +34,58 @@ export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const term = query.trim();
+    const timer = setTimeout(async () => {
+      setError(null);
+      setResults([]);
+      if (term.length < 2) {
+        setPending(false);
+        return;
+      }
+      setPending(true);
+      try {
+        const next = await searchBooksAction(term);
+        if (active) setResults(next);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Search failed");
+      } finally {
+        if (active) setPending(false);
+      }
+    }, 350);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row">
         <Input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setResults([]);
+            setError(null);
+            setPending(false);
+          }}
           placeholder="Search by title or author"
           aria-label="Search books"
+          aria-describedby="book-search-hint"
         />
-        <Button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            setError(null);
-            startTransition(async () => {
-              try {
-                const next = await searchBooksAction(query);
-                setResults(next);
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Search failed");
-              }
-            });
-          }}
-        >
-          {pending ? "Searching…" : "Search Open Library"}
-        </Button>
       </div>
+      <p id="book-search-hint" className="text-sm text-muted-foreground">
+        Type at least two characters to search.
+      </p>
+      {pending && (
+        <p role="status" className="text-sm text-muted-foreground">
+          Searching…
+        </p>
+      )}
       {error && <p className="text-sm text-destructive">{error}</p>}
       <ul className="space-y-3">
         {results.map((book) => (
