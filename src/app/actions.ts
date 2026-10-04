@@ -169,6 +169,8 @@ export async function saveScheduleAction(formData: FormData) {
     startDate: String(formData.get("startDate")),
     timeLocal: String(formData.get("timeLocal")),
     timezone: String(formData.get("timezone") ?? ""),
+    booksPerSession: Number(formData.get("booksPerSession") ?? 1),
+    assignRandomBooks: formData.get("assignRandomBooks") === "on",
     // Legacy storage field; book logging is always flexible.
     bookTiming: "after",
   });

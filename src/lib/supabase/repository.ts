@@ -1,5 +1,8 @@
 import { sessionPageBounds } from "@/lib/domain/session-presentation";
-import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
+import {
+  assertScheduleSettings,
+  selectRandomBooks,
+} from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
@@ -462,6 +465,13 @@ async function insertGeneratedSessions(
   let created = 0;
 
   for (const schedule of schedules) {
+    const library = schedule.assignRandomBooks
+      ? await rows(
+          supabase.from("books").select("*").eq("family_id", schedule.familyId),
+          mapBook,
+          "Could not load family library",
+        )
+      : [];
     const today = dateInTimezone(new Date(), schedule.timezone);
     const through = addDays(today, daysAhead);
     const { data: existingRows, error: existingError } = await supabase
@@ -504,6 +514,16 @@ async function insertGeneratedSessions(
           is_current: true,
         });
       assertNoError(assignmentError, "Could not assign reader");
+      const bookRows = selectRandomBooks(
+        library.map((book) => book.id),
+        schedule.booksPerSession ?? 1,
+      ).map((bookId) => ({ session_id: sessionId, book_id: bookId }));
+      if (bookRows.length) {
+        const { error: bookError } = await supabase
+          .from("session_books")
+          .insert(bookRows);
+        assertNoError(bookError, "Could not assign books");
+      }
       await sendInvite(supabase, sessionId, "REQUEST");
       created += 1;
     }
@@ -613,6 +633,8 @@ export async function saveSchedule(input: {
   timeLocal: string;
   timezone: string;
   bookTiming: "ahead" | "after";
+  booksPerSession?: number;
+  assignRandomBooks?: boolean;
 }): Promise<void> {
   const { supabase, member } = requireMember(await loadContext());
   requireOwner(member);
@@ -628,6 +650,8 @@ export async function saveSchedule(input: {
     zone: input.timezone,
     timing: input.bookTiming,
     deleting: false,
+    book_count: input.booksPerSession ?? 1,
+    random_books: input.assignRandomBooks ?? false,
   });
   assertNoError(error, "Could not save schedule");
   for (const changed of (data ?? []) as ScheduleChange[]) {

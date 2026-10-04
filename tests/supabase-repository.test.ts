@@ -249,3 +249,26 @@ it("clamps oversized page requests using the database count and handles empty fa
   expect(page.page).toBe(1);
   expect(page.items.map((s) => s.id)).toEqual(["only"]);
 });
+
+it("assigns only family library books to generated nights and keeps them on repeat runs", async () => {
+  Object.assign(fixture.tables.schedules[0], {
+    books_per_session: 2,
+    assign_random_books: true,
+  });
+  fixture.tables.books = [
+    { id: "a", family_id: "family", title: "A" },
+    { id: "b", family_id: "family", title: "B" },
+    { id: "other", family_id: "other-family", title: "Other" },
+  ];
+  fixture.tables.session_books = [];
+  expect(await ensureAllUpcomingSessions(1)).toBe(2);
+  for (const session of fixture.tables.reading_sessions) {
+    const books = fixture.tables.session_books.filter(
+      (book) => book.session_id === session.id,
+    );
+    expect(books.map((book) => book.book_id).sort()).toEqual(["a", "b"]);
+  }
+  const assigned = [...fixture.tables.session_books];
+  expect(await ensureAllUpcomingSessions(1)).toBe(0);
+  expect(fixture.tables.session_books).toEqual(assigned);
+});

@@ -18,6 +18,7 @@ beforeAll(async () => {
     "003_family_management.sql",
     "004_schedule_cancellation_intent.sql",
     "005_calendar_sequence.sql",
+    "006_schedule_books.sql",
   ])
     await db.exec(
       readFileSync(`supabase/migrations/${file}`, "utf8").replace(
@@ -216,4 +217,24 @@ it("increments calendar revisions atomically even when restoring identical sessi
     );
     expect(result.rows[0].calendar_sequence).toBe(sequence);
   }
+});
+
+it("persists schedule book settings and rejects invalid counts", async () => {
+  await db.query("select set_config('test.uid', $1, false)", [owner]);
+  await db.query(
+    "select * from manage_schedule($1::uuid[], current_date, '19:30', 'UTC', 'after', false, 3, true)",
+    [[mid]],
+  );
+  const settings = (
+    await db.query(
+      "select books_per_session, assign_random_books from schedules where active",
+    )
+  ).rows[0];
+  expect(settings).toMatchObject({ books_per_session: 3, assign_random_books: true });
+  await expect(
+    db.query(
+      "select * from manage_schedule($1::uuid[], current_date, '19:30', 'UTC', 'after', false, 0, true)",
+      [[mid]],
+    ),
+  ).rejects.toThrow(/book settings/);
 });
