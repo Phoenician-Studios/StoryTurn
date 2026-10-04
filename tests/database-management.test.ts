@@ -18,6 +18,7 @@ beforeAll(async () => {
     "003_family_management.sql",
     "004_schedule_cancellation_intent.sql",
     "005_calendar_sequence.sql",
+    "006_prevent_self_role_changes.sql",
   ])
     await db.exec(
       readFileSync(`supabase/migrations/${file}`, "utf8").replace(
@@ -53,7 +54,7 @@ afterAll(async () => {
 it("enforces parent permissions and prevents demoting the last parent", async () => {
   await expect(
     db.query("select update_family_member($1,'Parent','reader')", [mid]),
-  ).rejects.toThrow(/last parent/);
+  ).rejects.toThrow(/own role/);
   await db.query("select set_config('test.uid', $1, false)", [reader]);
   await expect(
     db.query("select * from manage_schedule(deleting => true)"),
@@ -216,4 +217,22 @@ it("increments calendar revisions atomically even when restoring identical sessi
     );
     expect(result.rows[0].calendar_sequence).toBe(sequence);
   }
+});
+
+it("rejects self-demotion with another parent while allowing name edits", async () => {
+  await db.query("select set_config('test.uid', $1, false)", [owner]);
+  await db.query("select update_family_member($1, 'Other parent', 'owner')", [rid]);
+  await expect(
+    db.query("select update_family_member($1, 'Parent', 'reader')", [mid]),
+  ).rejects.toThrow(/own role/);
+  await db.query("select update_family_member($1, 'Renamed parent', 'owner')", [mid]);
+  expect(
+    (
+      await db.query<{ display_name: string }>(
+        "select display_name from family_members where id=$1",
+        [mid],
+      )
+    ).rows[0].display_name,
+  ).toBe("Renamed parent");
+  await db.query("select update_family_member($1, 'Reader', 'reader')", [rid]);
 });
