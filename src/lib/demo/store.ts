@@ -1,4 +1,5 @@
 import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
+import { dateInTimezone } from "@/lib/domain/calendar-date";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
 import {
   generateInviteCode,
@@ -13,7 +14,7 @@ import {
   sessionDateKey,
 } from "@/lib/domain/sessions";
 import { computeDashboardStats } from "@/lib/domain/stats";
-import { addDays, formatDateOnly, readerForDate } from "@/lib/domain/rotation";
+import { addDays, readerForDate } from "@/lib/domain/rotation";
 import { createSeedState } from "@/lib/demo/seed";
 import { sendSessionInviteEmail } from "@/lib/session-mail";
 import type {
@@ -202,13 +203,13 @@ export function addBookFromSearch(input: {
 export function ensureUpcomingSessions(daysAhead = 14): number {
   const member = getCurrentMember();
   if (!member) return 0;
-  const today = formatDateOnly(new Date());
-  const through = addDays(today, daysAhead);
   let created = 0;
 
   for (const schedule of state().schedules.filter(
     (s) => s.familyId === member.familyId && s.active,
   )) {
+    const today = dateInTimezone(new Date(), schedule.timezone);
+    const through = addDays(today, daysAhead);
     const existing = new Set(
       state()
         .sessions.filter((s) => s.scheduleId === schedule.id)
@@ -275,20 +276,28 @@ export function saveSchedule(input: {
     state().schedules.find((s) => s.familyId === member.familyId && s.active) ??
     state().schedules.find((s) => s.familyId === member.familyId);
   if (existing) {
-    const restoring = !existing.active;
     Object.assign(existing, input, { active: true });
     for (const session of state().sessions.filter(
       (s) =>
         s.scheduleId === existing.id &&
-        (s.status === "scheduled" || (restoring && s.status === "cancelled")) &&
-        !isPastSession(s.scheduledFor),
+        (s.status === "scheduled" ||
+          (s.status === "cancelled" && s.cancellationSource === "schedule")) &&
+        !isPastSession(s.scheduledFor, dateInTimezone(new Date(), input.timezone)),
     )) {
       const day = sessionDateKey(session.scheduledFor);
+      const previousTime = session.scheduledFor;
+      const previousReaders = state()
+        .assignments.filter((a) => a.sessionId === session.id && a.isCurrent)
+        .map((a) => a.memberId);
+      const wasCancelled = session.status === "cancelled";
       if (day < input.startDate) {
+        if (wasCancelled) continue;
         session.status = "cancelled";
+        session.cancellationSource = "schedule";
         void sendSessionInvite(session.id, "CANCEL");
       } else {
         session.status = "scheduled";
+        session.cancellationSource = null;
         session.scheduledFor = `${day}T${input.timeLocal}:00`;
         state().assignments = applyReassignment({
           existing: state().assignments,
@@ -297,6 +306,17 @@ export function saveSchedule(input: {
             readerForDate(input.readerRotationMemberIds, input.startDate, day),
           ],
         });
+        const nextReaders = state()
+          .assignments.filter((a) => a.sessionId === session.id && a.isCurrent)
+          .map((a) => a.memberId);
+        const removed = wasCancelled
+          ? []
+          : previousReaders.filter((id) => !nextReaders.includes(id));
+        if (removed.length)
+          void sendSessionInvite(session.id, "CANCEL", {
+            memberIds: removed,
+            scheduledFor: previousTime,
+          });
         void sendSessionInvite(session.id, "REQUEST");
       }
       session.updatedAt = new Date().toISOString();
@@ -322,6 +342,7 @@ export function saveSchedule(input: {
 async function sendSessionInvite(
   sessionId: string,
   method: "REQUEST" | "CANCEL",
+  previous?: { memberIds: string[]; scheduledFor: string },
 ): Promise<void> {
   const session = state().sessions.find((s) => s.id === sessionId);
   if (!session) return;
@@ -329,14 +350,16 @@ async function sendSessionInvite(
   const currentAssignees = state().assignments.filter(
     (a) => a.sessionId === sessionId && a.isCurrent,
   );
-  const members = currentAssignees
-    .map((a) => state().members.find((m) => m.id === a.memberId))
+  const members = (previous?.memberIds ?? currentAssignees.map((a) => a.memberId))
+    .map((memberId) =>
+      state().members.find((m) => m.id === memberId && m.familyId === session.familyId),
+    )
     .filter(Boolean) as FamilyMember[];
   if (members.length === 0 || !family) return;
 
   const sent = await sendSessionInviteEmail({
     familyName: family.name,
-    scheduledFor: session.scheduledFor,
+    scheduledFor: previous?.scheduledFor ?? session.scheduledFor,
     icsUid: session.icsUid,
     attendees: members.map((member) => ({
       email: member.email,
@@ -440,11 +463,15 @@ export function getSessionDetail(sessionId: string) {
   };
 }
 
-export async function cancelSession(sessionId: string): Promise<void> {
+export async function cancelSession(
+  sessionId: string,
+  source: "schedule" | "individual" = "individual",
+): Promise<void> {
   const detail = getSessionDetail(sessionId);
   if (!detail) throw new Error("Session not found");
   assertTransition(detail.session.status, "cancelled");
   detail.session.status = "cancelled";
+  detail.session.cancellationSource = source;
   detail.session.updatedAt = new Date().toISOString();
   await sendSessionInvite(sessionId, "CANCEL");
 }
@@ -480,6 +507,7 @@ export async function updateSession(input: {
 
   assertTransition(detail.session.status, input.status);
   detail.session.status = input.status;
+  detail.session.cancellationSource = input.status === "cancelled" ? "individual" : null;
   detail.session.notes = input.notes;
   detail.session.updatedAt = new Date().toISOString();
 
@@ -612,9 +640,9 @@ export async function deleteSchedule(): Promise<void> {
       (s) =>
         s.scheduleId === schedule.id &&
         s.status === "scheduled" &&
-        !isPastSession(s.scheduledFor),
+        !isPastSession(s.scheduledFor, dateInTimezone(new Date(), schedule.timezone)),
     )) {
-      await cancelSession(session.id);
+      await cancelSession(session.id, "schedule");
     }
   }
 }

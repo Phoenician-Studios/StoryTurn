@@ -110,6 +110,7 @@ export interface ReadingSession {
   scheduleId: string | null;
   scheduledFor: string; // ISO datetime
   status: SessionStatus;
+  cancellationSource?: "schedule" | "individual" | null;
   notes: string | null;
   icsUid: string;
   createdAt: string;
