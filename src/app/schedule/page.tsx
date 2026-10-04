@@ -96,18 +96,10 @@ export default async function SchedulePage() {
                   defaultValue={admin.schedule?.timezone ?? "America/Los_Angeles"}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="bookTiming">Book selection</Label>
-                <select
-                  id="bookTiming"
-                  name="bookTiming"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-                  defaultValue={admin.schedule?.bookTiming ?? "after"}
-                >
-                  <option value="after">Log books after reading</option>
-                  <option value="ahead">Select books ahead of time</option>
-                </select>
-              </div>
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                Choose books before reading, log them afterward, or do both. You can
+                update each night’s book list at any time.
+              </p>
             </div>
             <Button type="submit">Save schedule & generate nights</Button>
           </form>

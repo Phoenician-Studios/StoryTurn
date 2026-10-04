@@ -1,9 +1,6 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import {
-  cancelSessionAction,
-  updateSessionAction,
-} from "@/app/actions";
+import { cancelSessionAction, updateSessionAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,11 +12,7 @@ import {
   wasCorrected,
 } from "@/lib/domain/corrections";
 import { isPastSession, sessionDateKey } from "@/lib/domain/sessions";
-import {
-  getCurrentMember,
-  getCurrentUser,
-  getSessionDetail,
-} from "@/lib/data";
+import { getCurrentMember, getCurrentUser, getSessionDetail } from "@/lib/data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default async function SessionPage({
@@ -56,7 +49,9 @@ export default async function SessionPage({
         <section className="animate-rise">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{detail.session.status}</Badge>
-            {corrected && <Badge className="bg-accent text-accent-foreground">Corrected</Badge>}
+            {corrected && (
+              <Badge className="bg-accent text-accent-foreground">Corrected</Badge>
+            )}
           </div>
           <h1 className="font-display mt-3 text-3xl text-primary">
             {sessionDateKey(detail.session.scheduledFor)} ·{" "}
@@ -131,6 +126,10 @@ export default async function SessionPage({
 
           <div className="space-y-2">
             <Label>Books from library</Label>
+            <p className="text-sm text-muted-foreground">
+              Plan some books now and add more after reading. Keep any planned books you
+              actually read selected.
+            </p>
             <div className="flex flex-wrap gap-3">
               {detail.library.map((book) => (
                 <label
@@ -163,11 +162,7 @@ export default async function SessionPage({
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              name="notes"
-              defaultValue={detail.session.notes ?? ""}
-            />
+            <Textarea id="notes" name="notes" defaultValue={detail.session.notes ?? ""} />
           </div>
 
           <div className="space-y-2">

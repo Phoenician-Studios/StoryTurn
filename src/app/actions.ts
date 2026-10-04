@@ -165,7 +165,8 @@ export async function saveScheduleAction(formData: FormData) {
     startDate: String(formData.get("startDate")),
     timeLocal: String(formData.get("timeLocal")),
     timezone: String(formData.get("timezone") || "America/Los_Angeles"),
-    bookTiming: String(formData.get("bookTiming")) === "ahead" ? "ahead" : "after",
+    // Legacy storage field; book logging is always flexible.
+    bookTiming: "after",
   });
   revalidatePath("/schedule");
   revalidatePath("/");
