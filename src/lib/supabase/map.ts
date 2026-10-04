@@ -133,6 +133,12 @@ export function mapSession(row: Row): ReadingSession {
     scheduleId: strOrNull(row, "schedule_id"),
     scheduledFor: toWallClock(str(row, "scheduled_for")),
     status: sessionStatus(str(row, "status")),
+    cancellationSource:
+      row.cancellation_source === "schedule"
+        ? "schedule"
+        : row.cancellation_source === "individual"
+          ? "individual"
+          : null,
     notes: strOrNull(row, "notes"),
     icsUid: str(row, "ics_uid"),
     createdAt: str(row, "created_at"),
