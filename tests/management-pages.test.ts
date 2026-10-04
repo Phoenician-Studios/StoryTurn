@@ -27,7 +27,9 @@ it("offers parent schedule editing and deletion", async () => {
   expect(html).toContain("Delete schedule");
 });
 it("offers parent invitations, reader editing, and child editing/removal", async () => {
-  const html = renderToStaticMarkup(await FamilyPage());
+  const html = renderToStaticMarkup(
+    await FamilyPage({ searchParams: Promise.resolve({}) }),
+  );
   expect(html).toContain("Parent (can manage family)");
   expect(html).toContain("Save reader");
   expect(html).toContain("Save child");
@@ -35,9 +37,20 @@ it("offers parent invitations, reader editing, and child editing/removal", async
 });
 it("hides management forms from readers", async () => {
   store.demoLogin("jordan@example.com");
-  const family = renderToStaticMarkup(await FamilyPage());
+  const family = renderToStaticMarkup(
+    await FamilyPage({ searchParams: Promise.resolve({}) }),
+  );
   const schedule = renderToStaticMarkup(await SchedulePage());
   expect(family).not.toContain("Save reader");
   expect(family).not.toContain("Remove child");
   expect(schedule).not.toContain("Delete schedule");
+});
+
+it("keeps invite-link sharing and membership notices alongside parent management", async () => {
+  const html = renderToStaticMarkup(
+    await FamilyPage({ searchParams: Promise.resolve({ invite: "already-member" }) }),
+  );
+  expect(html).toContain("You already belong to a family.");
+  expect(html).toContain("Copy invite link");
+  expect(html).toContain("Save reader");
 });
