@@ -19,7 +19,7 @@ import {
   getCurrentMember,
   getCurrentUser,
   getSessionDetail,
-} from "@/lib/demo/store";
+} from "@/lib/data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default async function SessionPage({
@@ -27,13 +27,13 @@ export default async function SessionPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = getCurrentUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const member = getCurrentMember();
+  const member = await getCurrentMember();
   if (!member) redirect("/onboarding");
 
   const { id } = await params;
-  const detail = getSessionDetail(id);
+  const detail = await getSessionDetail(id);
   if (!detail) redirect("/");
 
   const corrected = wasCorrected({

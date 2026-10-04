@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ensureUpcomingSessions, getDemoState } from "@/lib/demo/store";
+import { countOutboundEmails, ensureUpcomingSessions } from "@/lib/data";
 import { verifyQstashSignature } from "@/lib/qstash";
 
 export async function POST(request: Request) {
@@ -13,10 +13,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const created = ensureUpcomingSessions(14);
+  const created = await ensureUpcomingSessions(14);
   return NextResponse.json({
     ok: true,
     created,
-    emailsQueued: getDemoState().outboundEmails.length,
+    emailsQueued: countOutboundEmails(),
   });
 }

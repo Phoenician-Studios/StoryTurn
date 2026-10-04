@@ -6,8 +6,8 @@ Family bedtime reading tracker: whose night it is, book library, scheduled readi
 
 | Field | Value |
 |-------|-------|
-| Status | in-progress (demo app shipping on main) |
-| Owner session | cloud agent (new project) |
+| Status | in-progress (live path coded; production domain www.storyturn.app) |
+| Owner session | feature-context |
 | Last updated | 2026-10-04 |
 | Related PR / branch | `main` |
 
@@ -159,22 +159,28 @@ Correction rule: editing a past session never deletes original assignment rows (
 
 - Requirements locked (ICS, calendar in v1, dashboard filters, cancel, multi-reader invites, tests+CI).
 - Feature plan written.
-- Next.js app shipped on `main` with demo mode, domain unit tests (25), and GitHub Actions CI.
-- Supabase SQL migration + client stubs ready for real credentials.
+- Next.js app shipped on `main` with demo mode, domain unit tests, and GitHub Actions CI.
+- Pages and server actions go through `src/lib/data.ts`. Demo mode still uses the in-memory store. With `FORCE_DEMO_MODE=0` and both SQL migrations applied, the same actions use Supabase Auth and Postgres.
+- Auth routes: email/password sign-in and sign-up, Google OAuth, password reset, `/auth/callback`, and `/reset-password/update`.
+- `supabase/migrations/002_family_bootstrap.sql` adds `create_family` / `join_family`, fixes RLS recursion, and limits schedule, kid, and invite writes to owners.
+- Cron `POST /api/cron/generate-sessions` generates sessions for every active schedule when not in demo mode.
+- SQL migrations are applied on the StoryTurn Supabase project. Production Auth site URL is `https://www.storyturn.app`.
 
 ### Remaining work
 
-- Wire demo store paths to live Supabase Auth/DB once project credentials exist.
-- Enable Google provider + password reset emails in Supabase; real Plunk sends; QStash schedule.
-- After GitHub repo exists: require `lint-test-build` status check on `main`.
+- Walk signup → create family → schedule → session on `https://www.storyturn.app` after this branch is deployed.
+- Enable the Google provider in Supabase. Email/password is already on. Password recovery still uses Supabase's mailer, not Plunk.
+- Create the daily QStash schedule for `POST https://www.storyturn.app/api/cron/generate-sessions`.
+- Require the `lint-test-build` status check on `main`.
 
 ### Blockers / risks
 
-- Real Supabase/Plunk/QStash credentials needed for production auth/email.
+- `.env.local` can keep `FORCE_DEMO_MODE=1` for local demo browsing. Production on Vercel is set to `0`.
+- Google sign-in stays disabled until a Google client is added in Supabase.
 - Branch protection must be enabled manually in GitHub.
 
 ### Pointers for the next agent
 
-- Start at: replace demo store calls with Supabase queries while keeping domain helpers.
+- Start at: confirm a real signup on `https://www.storyturn.app` after deploy.
 - Do not: add per-kid ownership or profile photos in v1.
-- Verify with: `npm test`, `npm run lint`, `npm run build`, manual happy path on home → session → library → dashboard.
+- Verify with: `npm test`, `npm run lint`, `npm run build`, then a live signup once the schema exists. Demo happy path: home → session → library → dashboard.

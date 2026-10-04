@@ -2,69 +2,155 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { appUrl, isDemoMode } from "@/lib/config";
 import {
   addBookFromSearch,
   addKid,
   cancelSession,
   createFamily,
   createInviteCode,
-  demoLogin,
-  demoLogout,
   joinFamily,
   saveSchedule,
   updateSession,
-} from "@/lib/demo/store";
+} from "@/lib/data";
+import { demoLogin, demoLogout } from "@/lib/demo/store";
 import { searchOpenLibrary } from "@/lib/open-library";
-import { isDemoMode } from "@/lib/config";
+import { createClient } from "@/lib/supabase/server";
 
-function ensureDemo(): void {
-  if (!isDemoMode()) {
-    // Supabase-backed path lands in a follow-up once credentials exist.
-    // Until then every environment uses the demo store.
-  }
+function authErrorRedirect(path: string, message: string): never {
+  redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
 
 export async function loginAction(formData: FormData) {
-  ensureDemo();
-  const email = String(formData.get("email") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email.includes("@")) {
-    throw new Error("Enter a valid email");
+    authErrorRedirect("/login", "Enter a valid email");
   }
-  demoLogin(email);
+
+  if (isDemoMode()) {
+    demoLogin(email);
+    redirect("/");
+  }
+
+  const password = String(formData.get("password") ?? "");
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) authErrorRedirect("/login", error.message);
+  redirect("/");
+}
+
+export async function signupAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const displayName =
+    String(formData.get("displayName") ?? "").trim() || email.split("@")[0] || "Reader";
+  if (!email.includes("@")) {
+    authErrorRedirect("/signup", "Enter a valid email");
+  }
+
+  if (isDemoMode()) {
+    demoLogin(email);
+    redirect("/");
+  }
+
+  if (password.length < 6) {
+    authErrorRedirect("/signup", "Use at least 6 characters");
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${appUrl()}/auth/callback`,
+      data: { display_name: displayName },
+    },
+  });
+  if (error) authErrorRedirect("/signup", error.message);
+  if (!data.session) {
+    redirect("/login?notice=Check your email to confirm your account");
+  }
+  redirect("/onboarding");
+}
+
+export async function googleLoginAction() {
+  if (isDemoMode()) {
+    authErrorRedirect("/login", "Google sign-in is available when demo mode is off");
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${appUrl()}/auth/callback` },
+  });
+  if (error || !data.url) {
+    authErrorRedirect("/login", error?.message ?? "Google sign-in failed");
+  }
+  redirect(data.url);
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email.includes("@")) {
+    authErrorRedirect("/reset-password", "Enter a valid email");
+  }
+  if (isDemoMode()) {
+    redirect("/reset-password?sent=1");
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${appUrl()}/auth/callback?next=/reset-password/update`,
+  });
+  if (error) authErrorRedirect("/reset-password", error.message);
+  redirect("/reset-password?sent=1");
+}
+
+export async function updatePasswordAction(formData: FormData) {
+  if (isDemoMode()) redirect("/login");
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 6) {
+    authErrorRedirect("/reset-password/update", "Use at least 6 characters");
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) authErrorRedirect("/reset-password/update", error.message);
   redirect("/");
 }
 
 export async function logoutAction() {
-  demoLogout();
+  if (isDemoMode()) {
+    demoLogout();
+  } else {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  }
   redirect("/login");
 }
 
 export async function createFamilyAction(formData: FormData) {
-  createFamily(String(formData.get("name") ?? "Our family"));
+  await createFamily(String(formData.get("name") ?? "Our family"));
   revalidatePath("/");
   redirect("/");
 }
 
 export async function joinFamilyAction(formData: FormData) {
-  joinFamily(String(formData.get("code") ?? ""));
+  await joinFamily(String(formData.get("code") ?? ""));
   revalidatePath("/");
   redirect("/");
 }
 
 export async function addKidAction(formData: FormData) {
-  addKid(String(formData.get("name") ?? ""), Number(formData.get("age") ?? 0));
-  revalidatePath("/kids");
+  await addKid(String(formData.get("name") ?? ""), Number(formData.get("age") ?? 0));
   revalidatePath("/family");
 }
 
 export async function createInviteAction() {
-  createInviteCode();
+  await createInviteCode();
   revalidatePath("/family");
 }
 
 export async function saveScheduleAction(formData: FormData) {
   const readers = formData.getAll("readers").map(String);
-  saveSchedule({
+  await saveSchedule({
     readerRotationMemberIds: readers,
     startDate: String(formData.get("startDate")),
     timeLocal: String(formData.get("timeLocal")),
@@ -80,11 +166,11 @@ export async function searchBooksAction(query: string) {
 }
 
 export async function addBookAction(formData: FormData) {
-  addBookFromSearch({
+  await addBookFromSearch({
     title: String(formData.get("title")),
     authors: String(formData.get("authors") ?? "")
       .split(",")
-      .map((s) => s.trim())
+      .map((part) => part.trim())
       .filter(Boolean),
     openLibraryKey: String(formData.get("openLibraryKey") || "") || null,
     coverUrl: String(formData.get("coverUrl") || "") || null,
@@ -102,16 +188,20 @@ export async function cancelSessionAction(sessionId: string) {
 
 export async function updateSessionAction(formData: FormData) {
   const sessionId = String(formData.get("sessionId"));
+  const status = String(formData.get("status"));
+  if (status !== "scheduled" && status !== "completed" && status !== "cancelled") {
+    throw new Error("Invalid status");
+  }
   await updateSession({
     sessionId,
     memberIds: formData.getAll("memberIds").map(String),
     bookIds: formData.getAll("bookIds").map(String),
     freeformTitles: String(formData.get("freeformTitles") ?? "")
       .split("\n")
-      .map((s) => s.trim())
+      .map((line) => line.trim())
       .filter(Boolean),
     notes: String(formData.get("notes") || "") || null,
-    status: String(formData.get("status")) as "scheduled" | "completed" | "cancelled",
+    status,
     reason: String(formData.get("reason") || "") || undefined,
   });
   revalidatePath("/");
@@ -121,6 +211,9 @@ export async function updateSessionAction(formData: FormData) {
 }
 
 export async function switchDemoUserAction(formData: FormData) {
+  if (!isDemoMode()) {
+    authErrorRedirect("/login", "Demo users are only available in demo mode");
+  }
   demoLogin(String(formData.get("email") ?? "alex@example.com"));
   revalidatePath("/");
   redirect("/");
