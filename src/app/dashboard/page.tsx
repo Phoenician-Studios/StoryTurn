@@ -6,7 +6,7 @@ import {
   getCurrentMember,
   getCurrentUser,
   getDashboard,
-} from "@/lib/demo/store";
+} from "@/lib/data";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,9 +16,9 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ filter?: string }>;
 }) {
-  const user = getCurrentUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const member = getCurrentMember();
+  const member = await getCurrentMember();
   if (!member) redirect("/onboarding");
 
   const params = await searchParams;
@@ -28,7 +28,7 @@ export default async function DashboardPage({
       ? ({ type: "family" } as const)
       : ({ type: "member", memberId: filterParam } as const);
 
-  const dash = getDashboard(filter);
+  const dash = await getDashboard(filter);
   if (!dash) redirect("/onboarding");
 
   return (

@@ -4,12 +4,12 @@ import { createFamilyAction, joinFamilyAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getCurrentMember, getCurrentUser } from "@/lib/demo/store";
+import { getCurrentMember, getCurrentUser } from "@/lib/data";
 
-export default function OnboardingPage() {
-  const user = getCurrentUser();
+export default async function OnboardingPage() {
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (getCurrentMember()) redirect("/");
+  if (await getCurrentMember()) redirect("/");
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-12">

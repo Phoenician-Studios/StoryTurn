@@ -1,15 +1,22 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
-import { loginAction, switchDemoUserAction } from "@/app/actions";
+import { redirect } from "next/navigation";
+import { googleLoginAction, loginAction, switchDemoUserAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getCurrentUser } from "@/lib/demo/store";
-import { redirect } from "next/navigation";
+import { isDemoMode } from "@/lib/config";
+import { getCurrentUser } from "@/lib/data";
 
-export default function LoginPage() {
-  const user = getCurrentUser();
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; notice?: string }>;
+}) {
+  const user = await getCurrentUser();
   if (user) redirect("/");
+  const params = await searchParams;
+  const demo = isDemoMode();
 
   return (
     <main className="relative mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col justify-center px-4 py-12">
@@ -32,8 +39,16 @@ export default function LoginPage() {
         <section className="story-panel animate-rise-delay rounded-2xl p-6">
           <h2 className="font-display text-2xl text-foreground">Sign in</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Demo mode is on. Use a sample account or any email.
+            {demo
+              ? "Demo mode is on. Use a sample account or any email."
+              : "Use your email and password, or continue with Google."}
           </p>
+          {params.error && (
+            <p className="mt-3 text-sm text-destructive">{params.error}</p>
+          )}
+          {params.notice && (
+            <p className="mt-3 text-sm text-muted-foreground">{params.notice}</p>
+          )}
           <form action={loginAction} className="mt-5 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -43,7 +58,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 placeholder="alex@example.com"
-                defaultValue="alex@example.com"
+                defaultValue={demo ? "alex@example.com" : undefined}
               />
             </div>
             <div className="space-y-2">
@@ -52,8 +67,9 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
-                placeholder="demo"
-                defaultValue="demo"
+                required={!demo}
+                placeholder={demo ? "demo" : ""}
+                defaultValue={demo ? "demo" : undefined}
               />
             </div>
             <Button type="submit" className="w-full animate-glow">
@@ -61,29 +77,41 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Quick demo users
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                ["alex@example.com", "Alex"],
-                ["jordan@example.com", "Jordan"],
-                ["nana@example.com", "Nana"],
-              ].map(([email, label]) => (
-                <form key={email} action={switchDemoUserAction}>
-                  <input type="hidden" name="email" value={email} />
-                  <Button type="submit" variant="secondary" size="sm">
-                    {label}
-                  </Button>
-                </form>
-              ))}
+          {!demo && (
+            <form action={googleLoginAction} className="mt-3">
+              <Button type="submit" variant="secondary" className="w-full">
+                Continue with Google
+              </Button>
+            </form>
+          )}
+
+          {demo && (
+            <div className="mt-6 space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Quick demo users
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ["alex@example.com", "Alex"],
+                  ["jordan@example.com", "Jordan"],
+                  ["nana@example.com", "Nana"],
+                ].map(([email, label]) => (
+                  <form key={email} action={switchDemoUserAction}>
+                    <input type="hidden" name="email" value={email} />
+                    <Button type="submit" variant="secondary" size="sm">
+                      {label}
+                    </Button>
+                  </form>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <p className="mt-6 text-sm text-muted-foreground">
-            Password reset and Google sign-in wire up through Supabase Auth when
-            env vars are configured.{" "}
+            <Link href="/reset-password" className="text-primary underline-offset-2 hover:underline">
+              Forgot password
+            </Link>
+            {" · "}
             <Link href="/signup" className="text-primary underline-offset-2 hover:underline">
               Create account
             </Link>

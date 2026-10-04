@@ -10,8 +10,7 @@ import {
 import { computeDashboardStats } from "@/lib/domain/stats";
 import { addDays, formatDateOnly } from "@/lib/domain/rotation";
 import { createSeedState } from "@/lib/demo/seed";
-import { buildReadingInviteIcs, readingInviteSubject } from "@/lib/ics";
-import { sendEmail } from "@/lib/plunk";
+import { sendSessionInviteEmail } from "@/lib/session-mail";
 import type {
   AppState,
   Book,
@@ -295,53 +294,44 @@ async function sendSessionInvite(
     .filter(Boolean) as FamilyMember[];
   if (members.length === 0 || !family) return;
 
-  const dateLabel = sessionDateKey(session.scheduledFor);
-  const ics = buildReadingInviteIcs({
-    uid: session.icsUid,
-    title: `Bedtime reading · ${family.name}`,
-    description: `Reading to the kids for ${family.name}.`,
-    startLocal: session.scheduledFor,
-    organizerEmail: members[0]!.email,
-    organizerName: family.name,
-    attendeeEmails: members.map((m) => m.email),
-    method,
-    sequence: method === "CANCEL" ? 1 : 0,
-  });
-
-  const subject = readingInviteSubject({
+  const sent = await sendSessionInviteEmail({
     familyName: family.name,
-    dateLabel,
-    cancelled: method === "CANCEL",
+    scheduledFor: session.scheduledFor,
+    icsUid: session.icsUid,
+    attendees: members.map((member) => ({
+      email: member.email,
+      displayName: member.displayName,
+    })),
+    method,
   });
-  const body =
-    method === "CANCEL"
-      ? `<p>This bedtime reading session on <strong>${dateLabel}</strong> was cancelled.</p>`
-      : `<p>You're on for bedtime reading on <strong>${dateLabel}</strong>.</p><p>A calendar invite is attached.</p>`;
-
-  const result = await sendEmail({
-    to: members.map((m) => m.email),
-    subject,
-    body,
-    icsContent: ics,
-  });
+  if (!sent) return;
 
   state().outboundEmails.push({
     id: id("mail"),
-    to: members.map((m) => m.email),
-    subject,
-    body,
-    icsContent: ics,
+    to: sent.to,
+    subject: sent.subject,
+    body: sent.body,
+    icsContent: sent.ics,
     createdAt: new Date().toISOString(),
   });
-
-  void result;
 }
 
 export function getHomeContext() {
   const user = getCurrentUser();
   const member = getCurrentMember();
   if (!user || !member) {
-    return { user, member, nextSession: null as ReadingSession | null, family: null, kids: [] as Kid[], readers: [] as FamilyMember[] };
+    return {
+      user,
+      member,
+      nextSession: null as ReadingSession | null,
+      family: null,
+      kids: [] as Kid[],
+      readers: [] as FamilyMember[],
+      assignments: [],
+      sessionBooks: [],
+      corrections: [],
+      books: [],
+    };
   }
   const family = state().families.find((f) => f.id === member.familyId) ?? null;
   const nextSession = nextSessionForMember({
@@ -356,6 +346,16 @@ export function getHomeContext() {
     nextSession,
     kids: state().kids.filter((k) => k.familyId === member.familyId),
     readers: state().members.filter((m) => m.familyId === member.familyId),
+    assignments: nextSession
+      ? state().assignments.filter((row) => row.sessionId === nextSession.id)
+      : [],
+    sessionBooks: nextSession
+      ? state().sessionBooks.filter((row) => row.sessionId === nextSession.id)
+      : [],
+    corrections: nextSession
+      ? state().corrections.filter((row) => row.sessionId === nextSession.id)
+      : [],
+    books: state().books.filter((book) => book.familyId === member.familyId),
   };
 }
 
@@ -365,6 +365,12 @@ export function listFamilySessions() {
   return state()
     .sessions.filter((s) => s.familyId === member.familyId)
     .sort((a, b) => b.scheduledFor.localeCompare(a.scheduledFor));
+}
+
+export function listFamilyAssignments() {
+  const sessions = listFamilySessions();
+  const ids = new Set(sessions.map((session) => session.id));
+  return state().assignments.filter((row) => ids.has(row.sessionId));
 }
 
 export function getSessionDetail(sessionId: string) {

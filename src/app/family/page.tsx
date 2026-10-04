@@ -10,14 +10,14 @@ import {
   getCurrentMember,
   getCurrentUser,
   getFamilyAdmin,
-} from "@/lib/demo/store";
+} from "@/lib/data";
 
-export default function FamilyPage() {
-  const user = getCurrentUser();
+export default async function FamilyPage() {
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const member = getCurrentMember();
+  const member = await getCurrentMember();
   if (!member) redirect("/onboarding");
-  const admin = getFamilyAdmin();
+  const admin = await getFamilyAdmin();
   if (!admin) redirect("/onboarding");
 
   return (
@@ -66,19 +66,25 @@ export default function FamilyPage() {
                 </li>
               ))}
             </ul>
-            <form action={addKidAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_5rem_auto]">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" name="name" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="age">Age</Label>
-                <Input id="age" name="age" type="number" min={0} max={18} required />
-              </div>
-              <div className="flex items-end">
-                <Button type="submit">Add</Button>
-              </div>
-            </form>
+            {member.role === "owner" ? (
+              <form action={addKidAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_5rem_auto]">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input id="name" name="name" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="age">Age</Label>
+                  <Input id="age" name="age" type="number" min={0} max={18} required />
+                </div>
+                <div className="flex items-end">
+                  <Button type="submit">Add</Button>
+                </div>
+              </form>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Family owners can add kids.
+              </p>
+            )}
           </section>
         </div>
 
@@ -90,11 +96,13 @@ export default function FamilyPage() {
                 Share a code so another adult can join as a reader.
               </p>
             </div>
-            <form action={createInviteAction}>
-              <Button type="submit" variant="secondary">
-                Generate code
-              </Button>
-            </form>
+            {member.role === "owner" && (
+              <form action={createInviteAction}>
+                <Button type="submit" variant="secondary">
+                  Generate code
+                </Button>
+              </form>
+            )}
           </div>
           <ul className="mt-4 space-y-2">
             {admin.invites.map((invite) => (

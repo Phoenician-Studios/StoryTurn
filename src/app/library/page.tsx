@@ -6,14 +6,14 @@ import {
   getCurrentMember,
   getCurrentUser,
   getLibrary,
-} from "@/lib/demo/store";
+} from "@/lib/data";
 
-export default function LibraryPage() {
-  const user = getCurrentUser();
+export default async function LibraryPage() {
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const member = getCurrentMember();
+  const member = await getCurrentMember();
   if (!member) redirect("/onboarding");
-  const books = getLibrary();
+  const books = await getLibrary();
 
   return (
     <div className="flex min-h-full flex-1 flex-col">

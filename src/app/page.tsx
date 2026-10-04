@@ -5,10 +5,7 @@ import { AppNav } from "@/components/app-nav";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  getDemoState,
-  getHomeContext,
-} from "@/lib/demo/store";
+import { getHomeContext } from "@/lib/data";
 import { sessionDateKey } from "@/lib/domain/sessions";
 import {
   currentReaderLabels,
@@ -16,29 +13,24 @@ import {
   wasCorrected,
 } from "@/lib/domain/corrections";
 
-export default function HomePage() {
-  const home = getHomeContext();
+export default async function HomePage() {
+  const home = await getHomeContext();
   if (!home.user) redirect("/login");
   if (!home.member) redirect("/onboarding");
 
-  const state = getDemoState();
   const memberNames = Object.fromEntries(
     home.readers.map((r) => [r.id, r.displayName]),
   );
 
   const next = home.nextSession;
-  const assignments = next
-    ? state.assignments.filter((a) => a.sessionId === next.id)
-    : [];
-  const books = next
-    ? state.sessionBooks.filter((b) => b.sessionId === next.id)
-    : [];
+  const assignments = home.assignments;
+  const books = home.sessionBooks;
   const corrected = next
     ? wasCorrected({
-        assignments: state.assignments,
-        corrections: state.corrections,
-        sessionId: next.id,
-      })
+      assignments: home.assignments,
+      corrections: home.corrections,
+      sessionId: next.id,
+    })
     : false;
 
   return (
@@ -89,13 +81,13 @@ export default function HomePage() {
               <p className="mt-4 text-muted-foreground">
                 {books.length > 0
                   ? `Books lined up: ${books
-                      .map(
-                        (b) =>
-                          b.titleFreeform ??
-                          state.books.find((x) => x.id === b.bookId)?.title ??
-                          "Untitled",
-                      )
-                      .join(", ")}`
+                    .map(
+                      (b) =>
+                        b.titleFreeform ??
+                        home.books.find((x) => x.id === b.bookId)?.title ??
+                        "Untitled",
+                    )
+                    .join(", ")}`
                   : "Books can be chosen ahead of time or logged after reading."}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
