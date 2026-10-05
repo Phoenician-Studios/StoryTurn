@@ -1,6 +1,15 @@
+import type { SessionStatus } from "@/lib/types";
 import { addDays } from "@/lib/domain/rotation";
 import { sessionDateKey } from "@/lib/domain/sessions";
 import { dateInTimezone } from "@/lib/domain/timezones";
+
+export function sessionStatusFilter(
+  value?: string | string[],
+): SessionStatus | undefined {
+  return value === "scheduled" || value === "completed" || value === "cancelled"
+    ? value
+    : undefined;
+}
 
 export function sessionPageBounds(total: number, requestedPage?: string | string[]) {
   const pageCount = Math.max(1, Math.ceil(total / 10));

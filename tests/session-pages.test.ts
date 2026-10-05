@@ -138,3 +138,50 @@ it("renders numbered links, ellipses, and exactly one current page", async () =>
   expect(nav).not.toContain("Previous");
   expect(nav).not.toContain(">Next<");
 });
+
+it("filters before pagination and preserves status in page links", async () => {
+  const state = store.getDemoState();
+  const template = { ...state.sessions[0] };
+  state.sessions = Array.from({ length: 35 }, (_, i) => ({
+    ...template,
+    id: `filtered-${i}`,
+    status: i % 2 === 0 ? "completed" : "scheduled",
+    scheduledFor: new Date(Date.UTC(2026, 0, 1) + i * 86400000).toISOString(),
+  }));
+  const html = renderToStaticMarkup(
+    await SchedulePage({
+      searchParams: Promise.resolve({ status: "completed", page: "2" }),
+    }),
+  );
+  expect(html).toContain("Page 2 of 2");
+  expect(html).toContain("18 sessions");
+  expect(html).toContain("/schedule?page=1&amp;status=completed");
+  expect((html.match(/href="\/sessions\//g) ?? []).length).toBe(8);
+  expect(html).toContain("/sessions/filtered-0");
+  expect(html).not.toContain('/sessions/filtered-1"');
+  expect(html).toContain('value="completed" selected=""');
+});
+
+it("shows filtered empty states and ignores invalid status values", async () => {
+  for (const status of ["scheduled", "completed", "cancelled"] as const) {
+    const page = store.getFamilySessionPage("99", status);
+    expect(page.items.every((session) => session.status === status)).toBe(true);
+    expect(page.total).toBe(
+      store.listFamilySessions().filter((session) => session.status === status).length,
+    );
+  }
+  store.getDemoState().sessions = [];
+  const empty = renderToStaticMarkup(
+    await SchedulePage({ searchParams: Promise.resolve({ status: "cancelled" }) }),
+  );
+  expect(empty).toContain("No cancelled sessions.");
+  expect(empty).not.toContain('aria-label="Session pages"');
+  store.resetDemoStore();
+  for (const status of ["unknown", ["scheduled", "completed"]]) {
+    const html = renderToStaticMarkup(
+      await SchedulePage({ searchParams: Promise.resolve({ status }) }),
+    );
+    expect(html).toContain("25 sessions");
+    expect(html).toContain('value="all" selected=""');
+  }
+});

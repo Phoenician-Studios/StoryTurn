@@ -1,3 +1,4 @@
+import type { SessionStatus } from "@/lib/types";
 import { isDemoMode } from "@/lib/config";
 import * as demo from "@/lib/demo/store";
 import * as live from "@/lib/supabase/repository";
@@ -120,10 +121,13 @@ export async function deleteKid(id: string) {
   return isDemoMode() ? demo.deleteKid(id) : live.deleteKid(id);
 }
 
-export async function getFamilySessionPage(requestedPage?: string | string[]) {
+export async function getFamilySessionPage(
+  requestedPage?: string | string[],
+  status?: SessionStatus,
+) {
   return isDemoMode()
-    ? demo.getFamilySessionPage(requestedPage)
-    : live.getFamilySessionPage(requestedPage);
+    ? demo.getFamilySessionPage(requestedPage, status)
+    : live.getFamilySessionPage(requestedPage, status);
 }
 
 export async function getLibraryPage(query: string, page = 1) {
