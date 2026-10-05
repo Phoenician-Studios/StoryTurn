@@ -64,7 +64,7 @@ export default async function SessionPage({
             {detail.session.status === "cancelled" && (
               <ConfirmationForm
                 title="Reactivate this session?"
-                description="This night will return to Scheduled with its readers, books, and notes preserved. Upcoming calendar invitations will be sent again."
+                description={`This night will return to Scheduled with its readers, books, and notes preserved. ${past ? "No calendar invitations will be sent for this past session." : "Calendar invitations will be sent again."}`}
                 confirmLabel="Reactivate session"
                 confirmVariant="default"
                 action={async () => {
@@ -144,7 +144,7 @@ export default async function SessionPage({
           }
           description={
             detail.session.status === "cancelled"
-              ? "This session will be reopened with your changes. Upcoming calendar invitations will be sent again."
+              ? `This session will be reopened with your changes. ${past ? "No calendar invitations will be sent for this past session." : "Calendar invitations will be sent again."}`
               : "This night will be marked as canceled and its calendar invite will be canceled."
           }
           confirmLabel={

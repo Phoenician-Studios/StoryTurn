@@ -168,3 +168,19 @@ it("confirms reactivation through the edit form status selector", async () => {
   );
   expect(store.getSessionDetail(night.id)?.session.status).toBe("cancelled");
 });
+
+it("does not promise invitations when reopening a past session as completed", async () => {
+  const night = store.getHomeContext().nextSession!;
+  await store.cancelSession(night.id);
+  store.getDemoState().sessions.find((session) => session.id === night.id)!.scheduledFor =
+    "2020-01-01T19:30:00";
+  render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
+  const user = userEvent.setup();
+  await user.click(screen.getByLabelText("Status"));
+  await user.click(await screen.findByRole("option", { name: "Completed" }));
+  await user.type(screen.getByLabelText("Correction reason"), "Correcting the record");
+  await user.click(screen.getByRole("button", { name: "Save changes" }));
+  expect(screen.getByRole("dialog").textContent).toContain(
+    "No calendar invitations will be sent for this past session.",
+  );
+});
