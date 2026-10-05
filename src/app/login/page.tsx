@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-logo";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -23,16 +24,14 @@ export default async function LoginPage({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%231f6f5b\' fill-opacity=\'0.06\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
       <div className="animate-rise grid gap-10 md:grid-cols-[1.2fr_0.8fr] md:items-center">
         <section className="space-y-5">
-          <p className="font-display text-5xl leading-none text-primary md:text-6xl">
-            StoryTurn
-          </p>
+          <BrandLogo className="w-64" />
           <h1 className="max-w-xl text-2xl font-medium tracking-tight text-foreground md:text-3xl">
             Never wonder whose night it is again.
           </h1>
           <p className="max-w-lg text-base text-muted-foreground">
-            Track the bedtime rotation, keep a family library, and send calendar
-            invites for every reading night — parents, grandparents, and anyone
-            who joins with an invite code.
+            Track the bedtime rotation, keep a family library, and send calendar invites
+            for every reading night — parents, grandparents, and anyone who joins with an
+            invite code.
           </p>
         </section>
 
@@ -108,11 +107,17 @@ export default async function LoginPage({
           )}
 
           <p className="mt-6 text-sm text-muted-foreground">
-            <Link href="/reset-password" className="text-primary underline-offset-2 hover:underline">
+            <Link
+              href="/reset-password"
+              className="text-primary underline-offset-2 hover:underline"
+            >
               Forgot password
             </Link>
             {" · "}
-            <Link href="/signup" className="text-primary underline-offset-2 hover:underline">
+            <Link
+              href="/signup"
+              className="text-primary underline-offset-2 hover:underline"
+            >
               Create account
             </Link>
           </p>

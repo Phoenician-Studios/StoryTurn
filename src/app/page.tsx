@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-logo";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -36,7 +37,7 @@ export default async function HomePage() {
       <AppNav displayName={home.member.displayName} />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8">
         <section className="animate-rise max-w-2xl">
-          <p className="font-display text-4xl text-primary md:text-5xl">StoryTurn</p>
+          <BrandLogo className="w-64" />
           <p className="mt-2 text-muted-foreground">
             {home.family?.name} · reading with{" "}
             {home.kids.map((k) => k.name).join(" & ") || "your kids"}
