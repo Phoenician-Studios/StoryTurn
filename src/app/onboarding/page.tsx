@@ -1,3 +1,4 @@
+import { ConfirmationForm } from "@/components/confirmation-form";
 import { BrandLogo } from "@/components/brand-logo";
 import { ArrowLeft } from "lucide-react";
 export const dynamic = "force-dynamic";
@@ -18,12 +19,17 @@ export default async function OnboardingPage() {
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-12">
-      <form action={logoutAction}>
+      <ConfirmationForm
+        action={logoutAction}
+        title="Sign out?"
+        description="You will return to the sign-in page."
+        confirmLabel="Sign out"
+      >
         <Button type="submit" variant="ghost" className="min-h-11 gap-2">
           <ArrowLeft className="size-4" aria-hidden="true" />
           Back to sign in
         </Button>
-      </form>
+      </ConfirmationForm>
       <div className="animate-rise">
         <BrandLogo className="w-64" />
         <h1 className="mt-2 text-2xl font-medium">Create or join a family</h1>

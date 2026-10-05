@@ -39,7 +39,7 @@ export async function sendSessionInviteEmail(input: {
   });
   const body =
     input.method === "CANCEL"
-      ? `<p>This bedtime reading session on <strong>${dateLabel}</strong> was cancelled.</p>`
+      ? `<p>This bedtime reading session on <strong>${dateLabel}</strong> was canceled.</p>`
       : `<p>You're on for bedtime reading on <strong>${dateLabel}</strong>.</p><p>A calendar invite is attached.</p>`;
 
   const to = attendees.map((member) => member.email);

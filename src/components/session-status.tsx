@@ -17,7 +17,7 @@ export function SessionStatusBadge({
 }) {
   return (
     <Badge className={cn(colors[status], className)}>
-      {status[0].toUpperCase() + status.slice(1)}
+      {status === "cancelled" ? "Canceled" : status[0].toUpperCase() + status.slice(1)}
     </Badge>
   );
 }

@@ -106,9 +106,6 @@ export function nextSessionForMember(params: {
 
 export function assertTransition(from: SessionStatus, to: SessionStatus): void {
   if (from === to) return;
-  if (from === "cancelled" && to !== "cancelled") {
-    throw new Error("Cancelled sessions cannot be reopened in v1");
-  }
   if (from === "completed" && to === "scheduled") {
     throw new Error("Completed sessions cannot return to scheduled");
   }

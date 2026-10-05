@@ -655,11 +655,9 @@ async function persistAssignments(
   existing: SessionAssignment[],
   memberIds: string[],
 ): Promise<void> {
-  const next = applyReassignment({
-    existing,
-    sessionId,
-    newMemberIds: memberIds,
-  }).filter((row) => row.sessionId === sessionId);
+  const reassigned = applyReassignment({ existing, sessionId, newMemberIds: memberIds });
+  if (reassigned === existing) return;
+  const next = reassigned.filter((row) => row.sessionId === sessionId);
   const { updates, inserts } = partitionAssignmentWrites(next);
 
   for (const row of updates) {

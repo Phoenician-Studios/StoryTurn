@@ -78,7 +78,7 @@ export function readingInviteSubject(params: {
   cancelled?: boolean;
 }): string {
   if (params.cancelled) {
-    return `Cancelled: Bedtime reading for ${params.familyName} on ${params.dateLabel}`;
+    return `Canceled: Bedtime reading for ${params.familyName} on ${params.dateLabel}`;
   }
   return `Bedtime reading: ${params.familyName} on ${params.dateLabel}`;
 }
