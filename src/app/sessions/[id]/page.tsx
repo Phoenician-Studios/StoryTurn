@@ -1,4 +1,4 @@
-import { Recycle } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { ConfirmationForm } from "@/components/confirmation-form";
 import { BackLink } from "@/components/back-link";
 import { FormSelect } from "@/components/form-select";
@@ -80,7 +80,7 @@ export default async function SessionPage({
                   title="Reactivate session"
                   className="text-primary"
                 >
-                  <Recycle aria-hidden="true" />
+                  <RotateCcw aria-hidden="true" />
                 </Button>
               </ConfirmationForm>
             )}
