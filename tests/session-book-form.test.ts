@@ -152,3 +152,19 @@ it("requires confirmation to cancel and reactivates without losing session detai
     detail.assignments.filter((row) => row.isCurrent).map((row) => row.memberId),
   ).toEqual(["mem_alex"]);
 });
+
+it("confirms reactivation through the edit form status selector", async () => {
+  const night = store.getHomeContext().nextSession!;
+  await store.cancelSession(night.id);
+  render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
+  const user = userEvent.setup();
+  await user.click(screen.getByLabelText("Status"));
+  await user.click(await screen.findByRole("option", { name: "Scheduled" }));
+  await user.click(screen.getByRole("button", { name: "Save changes" }));
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(store.getSessionDetail(night.id)?.session.status).toBe("cancelled");
+  await user.click(
+    within(screen.getByRole("dialog")).getByRole("button", { name: "Go back" }),
+  );
+  expect(store.getSessionDetail(night.id)?.session.status).toBe("cancelled");
+});

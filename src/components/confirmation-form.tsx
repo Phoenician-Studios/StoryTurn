@@ -25,7 +25,7 @@ export function ConfirmationForm({
   title: string;
   description: string;
   confirmLabel: string;
-  whenField?: { name: string; value: string };
+  whenField?: { name: string; value: string | string[] };
   confirmVariant?: "default" | "destructive";
 }) {
   const form = useRef<HTMLFormElement>(null);
@@ -44,7 +44,9 @@ export function ConfirmationForm({
           }
           if (
             whenField &&
-            new FormData(event.currentTarget).get(whenField.name) !== whenField.value
+            !(
+              Array.isArray(whenField.value) ? whenField.value : [whenField.value]
+            ).includes(String(new FormData(event.currentTarget).get(whenField.name)))
           )
             return;
           event.preventDefault();

@@ -113,3 +113,10 @@
 - **Gap:** Limiting the edit page's initial library fetch inadvertently serialized the full-library query used by saves and cancellations.
 - **Going forward:** Keep independent queries in the same Promise.all when adding a dependent optimized path. Test concurrency with a blocked dependency.
 - **Pointers:** `getSessionDetail`, `tests/supabase-repository.test.ts`
+
+### 2026-10-05 — Cover alternate reactivation paths
+
+- **Source:** PR #15 · Greptile
+- **Gap:** The status selector reopened canceled sessions without confirmation, and reusing the edit mutation could duplicate non-original reader assignments.
+- **Going forward:** Test every UI path that changes session status and preserve assignment rows when the requested readers match current readers.
+- **Pointers:** `ConfirmationForm`, `applyReassignment`, `persistAssignments`, `tests/session-book-form.test.ts`

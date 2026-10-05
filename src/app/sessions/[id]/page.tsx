@@ -137,10 +137,31 @@ export default async function SessionPage({
         )}
 
         <ConfirmationForm
-          title="Cancel this session?"
-          description="This night will be marked as canceled and its calendar invite will be canceled."
-          confirmLabel="Cancel session"
-          whenField={{ name: "status", value: "cancelled" }}
+          title={
+            detail.session.status === "cancelled"
+              ? "Reactivate this session?"
+              : "Cancel this session?"
+          }
+          description={
+            detail.session.status === "cancelled"
+              ? "This session will be reopened with your changes. Upcoming calendar invitations will be sent again."
+              : "This night will be marked as canceled and its calendar invite will be canceled."
+          }
+          confirmLabel={
+            detail.session.status === "cancelled"
+              ? "Reactivate session"
+              : "Cancel session"
+          }
+          confirmVariant={
+            detail.session.status === "cancelled" ? "default" : "destructive"
+          }
+          whenField={{
+            name: "status",
+            value:
+              detail.session.status === "cancelled"
+                ? ["scheduled", "completed"]
+                : "cancelled",
+          }}
           action={updateSessionAction}
           className="story-panel mt-6 space-y-4 rounded-2xl p-5 animate-rise-delay"
         >
