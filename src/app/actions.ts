@@ -12,6 +12,7 @@ import {
   updateMember,
   deleteSchedule,
   cancelSession,
+  getSessionDetail,
   createFamily,
   createInviteCode,
   joinFamily,
@@ -262,4 +263,25 @@ export async function updateKidAction(formData: FormData) {
 export async function deleteKidAction(formData: FormData) {
   await deleteKid(String(formData.get("id")));
   revalidatePath("/", "layout");
+}
+
+export async function reactivateSessionAction(sessionId: string) {
+  const detail = await getSessionDetail(sessionId);
+  if (!detail) throw new Error("Session not found");
+  if (detail.session.status !== "cancelled") return;
+  await updateSession({
+    sessionId,
+    memberIds: detail.assignments
+      .filter((row) => row.isCurrent)
+      .map((row) => row.memberId),
+    bookIds: detail.books.flatMap((book) => (book.bookId ? [book.bookId] : [])),
+    freeformTitles: detail.books.flatMap((book) =>
+      book.titleFreeform ? [book.titleFreeform] : [],
+    ),
+    notes: detail.session.notes,
+    status: "scheduled",
+    reason: "Reactivated canceled session",
+  });
+  for (const path of ["/", "/schedule", "/dashboard", `/sessions/${sessionId}`])
+    revalidatePath(path);
 }
