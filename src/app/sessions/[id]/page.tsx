@@ -1,8 +1,14 @@
+import { RotateCcw } from "lucide-react";
+import { ConfirmationForm } from "@/components/confirmation-form";
 import { BackLink } from "@/components/back-link";
 import { FormSelect } from "@/components/form-select";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import { cancelSessionAction, updateSessionAction } from "@/app/actions";
+import {
+  cancelSessionAction,
+  reactivateSessionAction,
+  updateSessionAction,
+} from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { SessionBookPicker } from "@/components/session-book-picker";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +61,29 @@ export default async function SessionPage({
         <section className="animate-rise">
           <div className="flex flex-wrap items-center gap-2">
             <SessionStatusBadge status={detail.session.status} />
+            {detail.session.status === "cancelled" && (
+              <ConfirmationForm
+                title="Reactivate this session?"
+                description={`This night will return to Scheduled with its readers, books, and notes preserved. ${past ? "No calendar invitations will be sent for this past session." : "Calendar invitations will be sent again."}`}
+                confirmLabel="Reactivate session"
+                confirmVariant="default"
+                action={async () => {
+                  "use server";
+                  await reactivateSessionAction(id);
+                }}
+              >
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Reactivate session"
+                  title="Reactivate session"
+                  className="text-primary"
+                >
+                  <RotateCcw aria-hidden="true" />
+                </Button>
+              </ConfirmationForm>
+            )}
             {corrected && (
               <Badge className="bg-accent text-accent-foreground">Corrected</Badge>
             )}
@@ -107,7 +136,32 @@ export default async function SessionPage({
           </section>
         )}
 
-        <form
+        <ConfirmationForm
+          title={
+            detail.session.status === "cancelled"
+              ? "Reactivate this session?"
+              : "Cancel this session?"
+          }
+          description={
+            detail.session.status === "cancelled"
+              ? `This session will be reopened with your changes. ${past ? "No calendar invitations will be sent for this past session." : "Calendar invitations will be sent again."}`
+              : "This night will be marked as canceled and its calendar invite will be canceled."
+          }
+          confirmLabel={
+            detail.session.status === "cancelled"
+              ? "Reactivate session"
+              : "Cancel session"
+          }
+          confirmVariant={
+            detail.session.status === "cancelled" ? "default" : "destructive"
+          }
+          whenField={{
+            name: "status",
+            value:
+              detail.session.status === "cancelled"
+                ? ["scheduled", "completed"]
+                : "cancelled",
+          }}
           action={updateSessionAction}
           className="story-panel mt-6 space-y-4 rounded-2xl p-5 animate-rise-delay"
         >
@@ -187,7 +241,7 @@ export default async function SessionPage({
               options={[
                 { value: "scheduled", label: "Scheduled" },
                 { value: "completed", label: "Completed" },
-                { value: "cancelled", label: "Cancelled" },
+                { value: "cancelled", label: "Canceled" },
               ]}
             />
           </div>
@@ -207,10 +261,13 @@ export default async function SessionPage({
           <div className="flex flex-wrap gap-3">
             <Button type="submit">Save changes</Button>
           </div>
-        </form>
+        </ConfirmationForm>
 
         {detail.session.status !== "cancelled" && (
-          <form
+          <ConfirmationForm
+            title="Cancel this session?"
+            description="This night will be marked as canceled and its calendar invite will be canceled."
+            confirmLabel="Cancel session"
             action={async () => {
               "use server";
               await cancelSessionAction(id);
@@ -220,7 +277,7 @@ export default async function SessionPage({
             <Button type="submit" variant="destructive">
               Cancel this reading session
             </Button>
-          </form>
+          </ConfirmationForm>
         )}
       </main>
     </div>

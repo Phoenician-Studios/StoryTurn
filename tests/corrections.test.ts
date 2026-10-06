@@ -87,3 +87,34 @@ describe("buildCorrectionRecord", () => {
     ).toThrow(/change/i);
   });
 });
+
+it("preserves reassigned reader rows when the current reader list is unchanged", async () => {
+  const { applyReassignment } = await import("@/lib/domain/corrections");
+  const rows = [
+    {
+      id: "original",
+      sessionId: "night",
+      memberId: "first",
+      isOriginal: true,
+      isCurrent: false,
+      createdAt: "",
+    },
+    {
+      id: "reassigned",
+      sessionId: "night",
+      memberId: "second",
+      isOriginal: false,
+      isCurrent: true,
+      createdAt: "",
+    },
+  ];
+  const once = applyReassignment({
+    existing: rows,
+    sessionId: "night",
+    newMemberIds: ["second"],
+  });
+  expect(once).toEqual(rows);
+  expect(
+    applyReassignment({ existing: once, sessionId: "night", newMemberIds: ["second"] }),
+  ).toEqual(rows);
+});

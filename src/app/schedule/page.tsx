@@ -1,6 +1,7 @@
 import Form from "next/form";
 import { NativeSelect } from "@/components/ui/native-select";
 import { sessionStatusFilter } from "@/lib/domain/session-presentation";
+import { ConfirmationForm } from "@/components/confirmation-form";
 import { BackLink } from "@/components/back-link";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
@@ -136,14 +137,20 @@ export default async function SchedulePage({
         )}
 
         {member.role === "owner" && admin.schedule && (
-          <form action={deleteScheduleAction} className="mt-4">
+          <ConfirmationForm
+            title="Delete this schedule?"
+            description="Future nights from this schedule and their calendar invitations will be canceled."
+            confirmLabel="Delete schedule"
+            action={deleteScheduleAction}
+            className="mt-4"
+          >
             <p className="mb-2 text-sm text-muted-foreground">
               Deleting the schedule cancels its upcoming nights and keeps reading history.
             </p>
             <Button type="submit" variant="destructive">
               Delete schedule
             </Button>
-          </form>
+          </ConfirmationForm>
         )}
         <section className="mt-8">
           <div className="flex flex-wrap items-center justify-between gap-3">

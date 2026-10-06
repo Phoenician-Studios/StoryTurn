@@ -46,6 +46,6 @@ describe("readingInviteSubject", () => {
         dateLabel: "2026-10-04",
         cancelled: true,
       }),
-    ).toMatch(/^Cancelled:/);
+    ).toMatch(/^Canceled:/);
   });
 });

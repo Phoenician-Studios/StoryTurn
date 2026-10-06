@@ -1,6 +1,8 @@
 "use client";
 
 import { UserRound } from "lucide-react";
+import { ConfirmationForm } from "@/components/confirmation-form";
+
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
@@ -77,11 +79,17 @@ export function AppNav({ displayName }: { displayName: string }) {
             <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{displayName}</span>
           </span>
-          <form action={logoutAction}>
+          <ConfirmationForm
+            title="Sign out?"
+            description="You will need to sign in again to access your family."
+            confirmLabel="Sign out"
+            action={logoutAction}
+            className="hidden md:block"
+          >
             <Button type="submit" variant="outline" size="sm">
               Sign out
             </Button>
-          </form>
+          </ConfirmationForm>
           <button
             ref={toggleRef}
             type="button"
@@ -130,6 +138,21 @@ export function AppNav({ displayName }: { displayName: string }) {
                 {link.label}
               </Link>
             ))}
+            <ConfirmationForm
+              title="Sign out?"
+              description="You will need to sign in again to access your family."
+              confirmLabel="Sign out"
+              action={logoutAction}
+              className="mt-2 border-t border-border pt-2"
+            >
+              <Button
+                type="submit"
+                variant="ghost"
+                className="min-h-11 w-full justify-start px-3 text-muted-foreground"
+              >
+                Sign out
+              </Button>
+            </ConfirmationForm>
           </nav>
         </div>
       </div>

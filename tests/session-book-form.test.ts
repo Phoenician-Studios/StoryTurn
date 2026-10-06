@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as store from "@/lib/demo/store";
@@ -102,4 +102,85 @@ it("removes an initially selected book when saved with the modal closed", async 
       }) as HTMLInputElement
     ).getAttribute("aria-pressed"),
   ).toBe("true");
+});
+
+it("requires confirmation to cancel and reactivates without losing session details", async () => {
+  const night = store.getHomeContext().nextSession!;
+  await store.updateSession({
+    sessionId: night.id,
+    memberIds: ["mem_alex"],
+    bookIds: ["book_moon"],
+    freeformTitles: ["Story"],
+    notes: "Keep this note",
+    status: "scheduled",
+  });
+  const user = userEvent.setup();
+  const view = render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
+  await user.click(screen.getByRole("button", { name: "Cancel this reading session" }));
+  expect(store.getSessionDetail(night.id)?.session.status).toBe("scheduled");
+  await user.click(screen.getByRole("button", { name: "Go back" }));
+  expect(store.getSessionDetail(night.id)?.session.status).toBe("scheduled");
+  await user.click(screen.getByRole("button", { name: "Cancel this reading session" }));
+  await user.click(screen.getByRole("button", { name: /^Cancel session$/ }));
+  await waitFor(() =>
+    expect(store.getSessionDetail(night.id)?.session.status).toBe("cancelled"),
+  );
+  view.unmount();
+  render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
+  await user.click(screen.getByRole("button", { name: "Reactivate session" }));
+  expect(store.getSessionDetail(night.id)?.session.status).toBe("cancelled");
+  await user.click(
+    screen.getByRole("dialog").querySelector('button[data-slot="button"]')!,
+  );
+  expect(store.getSessionDetail(night.id)?.session.status).toBe("cancelled");
+  await user.click(screen.getByRole("button", { name: "Reactivate session" }));
+  await user.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Reactivate session",
+    }),
+  );
+  await waitFor(() =>
+    expect(store.getSessionDetail(night.id)?.session.status).toBe("scheduled"),
+  );
+  const detail = store.getSessionDetail(night.id)!;
+  expect(detail.session.notes).toBe("Keep this note");
+  expect(detail.books.map((book) => book.bookId ?? book.titleFreeform)).toEqual([
+    "book_moon",
+    "Story",
+  ]);
+  expect(
+    detail.assignments.filter((row) => row.isCurrent).map((row) => row.memberId),
+  ).toEqual(["mem_alex"]);
+});
+
+it("confirms reactivation through the edit form status selector", async () => {
+  const night = store.getHomeContext().nextSession!;
+  await store.cancelSession(night.id);
+  render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
+  const user = userEvent.setup();
+  await user.click(screen.getByLabelText("Status"));
+  await user.click(await screen.findByRole("option", { name: "Scheduled" }));
+  await user.click(screen.getByRole("button", { name: "Save changes" }));
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(store.getSessionDetail(night.id)?.session.status).toBe("cancelled");
+  await user.click(
+    within(screen.getByRole("dialog")).getByRole("button", { name: "Go back" }),
+  );
+  expect(store.getSessionDetail(night.id)?.session.status).toBe("cancelled");
+});
+
+it("does not promise invitations when reopening a past session as completed", async () => {
+  const night = store.getHomeContext().nextSession!;
+  await store.cancelSession(night.id);
+  store.getDemoState().sessions.find((session) => session.id === night.id)!.scheduledFor =
+    "2020-01-01T19:30:00";
+  render(await SessionPage({ params: Promise.resolve({ id: night.id }) }));
+  const user = userEvent.setup();
+  await user.click(screen.getByLabelText("Status"));
+  await user.click(await screen.findByRole("option", { name: "Completed" }));
+  await user.type(screen.getByLabelText("Correction reason"), "Correcting the record");
+  await user.click(screen.getByRole("button", { name: "Save changes" }));
+  expect(screen.getByRole("dialog").textContent).toContain(
+    "No calendar invitations will be sent for this past session.",
+  );
 });

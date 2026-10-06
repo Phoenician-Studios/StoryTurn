@@ -43,20 +43,25 @@ export function applyReassignment(params: {
   nowIso?: string;
 }): SessionAssignment[] {
   const now = params.nowIso ?? new Date().toISOString();
-  const forSession = params.existing.filter(
-    (a) => a.sessionId === params.sessionId,
+  const forSession = params.existing.filter((a) => a.sessionId === params.sessionId);
+  const others = params.existing.filter((a) => a.sessionId !== params.sessionId);
+
+  const currentIds = new Set(
+    forSession.filter((row) => row.isCurrent).map((row) => row.memberId),
   );
-  const others = params.existing.filter(
-    (a) => a.sessionId !== params.sessionId,
-  );
+  const requestedIds = new Set(params.newMemberIds);
+  if (
+    currentIds.size === requestedIds.size &&
+    [...currentIds].every((id) => requestedIds.has(id))
+  ) {
+    return params.existing;
+  }
 
   const cleared = forSession.map((a) => ({ ...a, isCurrent: false }));
 
   const next: SessionAssignment[] = [...cleared];
   for (const memberId of params.newMemberIds) {
-    const existingOriginal = cleared.find(
-      (a) => a.memberId === memberId && a.isOriginal,
-    );
+    const existingOriginal = cleared.find((a) => a.memberId === memberId && a.isOriginal);
     if (existingOriginal) {
       next.splice(
         next.findIndex((a) => a.id === existingOriginal.id),
@@ -77,10 +82,7 @@ export function applyReassignment(params: {
 
   // First assignment batch is always original
   if (forSession.length === 0) {
-    return [
-      ...others,
-      ...next.map((a) => ({ ...a, isOriginal: true, isCurrent: true })),
-    ];
+    return [...others, ...next.map((a) => ({ ...a, isOriginal: true, isCurrent: true }))];
   }
 
   return [...others, ...next];
@@ -114,9 +116,7 @@ export function wasCorrected(params: {
   if (params.corrections.some((c) => c.sessionId === params.sessionId)) {
     return true;
   }
-  const forSession = params.assignments.filter(
-    (a) => a.sessionId === params.sessionId,
-  );
+  const forSession = params.assignments.filter((a) => a.sessionId === params.sessionId);
   const originalIds = forSession
     .filter((a) => a.isOriginal)
     .map((a) => a.memberId)
