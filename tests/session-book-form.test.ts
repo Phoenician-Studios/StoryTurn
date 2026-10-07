@@ -34,12 +34,14 @@ it("submits retained planned books through the actual session form and server ac
   expect(
     (
       (await screen.findByRole("button", {
-        name: "Goodnight Moon",
+        name: /Goodnight Moon \(Format unknown/,
       })) as HTMLInputElement
     ).getAttribute("aria-pressed"),
   ).toBe("true");
   await user.click(
-    await screen.findByRole("button", { name: "The Very Hungry Caterpillar" }),
+    await screen.findByRole("button", {
+      name: /The Very Hungry Caterpillar \(Format unknown/,
+    }),
   );
   await user.click(screen.getByRole("button", { name: /Done ·/ }));
   await user.type(
@@ -71,7 +73,7 @@ it("removes an initially selected book when saved with the modal closed", async 
   const user = userEvent.setup();
   await user.click(screen.getByRole("button", { name: "Add books from library" }));
   const moon = (await screen.findByRole("button", {
-    name: "Goodnight Moon",
+    name: /Goodnight Moon \(Format unknown/,
   })) as HTMLInputElement;
   expect(moon.getAttribute("aria-pressed")).toBe("true");
   await user.click(moon);
@@ -91,14 +93,14 @@ it("removes an initially selected book when saved with the modal closed", async 
   expect(
     (
       (await screen.findByRole("button", {
-        name: "Goodnight Moon",
+        name: /Goodnight Moon \(Format unknown/,
       })) as HTMLInputElement
     ).getAttribute("aria-pressed"),
   ).toBe("false");
   expect(
     (
       screen.getByRole("button", {
-        name: "The Very Hungry Caterpillar",
+        name: /The Very Hungry Caterpillar \(Format unknown/,
       }) as HTMLInputElement
     ).getAttribute("aria-pressed"),
   ).toBe("true");

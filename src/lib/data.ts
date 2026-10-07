@@ -58,16 +58,6 @@ export async function createInviteCode(role: "owner" | "reader" = "reader") {
   return isDemoMode() ? demo.createInviteCode(role) : live.createInviteCode(role);
 }
 
-export async function addBookFromSearch(input: {
-  title: string;
-  authors: string[];
-  openLibraryKey: string | null;
-  coverUrl: string | null;
-  isbn: string | null;
-}) {
-  return isDemoMode() ? demo.addBookFromSearch(input) : live.addBookFromSearch(input);
-}
-
 export async function saveSchedule(input: {
   readerRotationMemberIds: string[];
   startDate: string;
@@ -134,4 +124,38 @@ export async function getLibraryPage(query: string, page = 1) {
   return isDemoMode()
     ? demo.getLibraryPage(query, page)
     : live.getLibraryPage(query, page);
+}
+
+export async function startBookScan() {
+  return isDemoMode() ? demo.startBookScan() : live.startBookScan();
+}
+export async function finishBookScan(id: string) {
+  return isDemoMode() ? demo.finishBookScan(id) : live.finishBookScan(id);
+}
+export async function saveBookEdition(
+  input: import("@/lib/book-edition").BookInput,
+  scanId?: string,
+) {
+  return isDemoMode()
+    ? demo.saveBookEdition(input, scanId)
+    : live.saveBookEdition(input, scanId);
+}
+export async function removeLibraryBooks(ids: string[], scanId?: string) {
+  return isDemoMode()
+    ? demo.removeLibraryBooks(ids, scanId)
+    : live.removeLibraryBooks(ids, scanId);
+}
+export async function correctBookFormat(id: string, format: string) {
+  return isDemoMode()
+    ? demo.correctBookFormat(id, format)
+    : live.correctBookFormat(id, format);
+}
+let nextDemoLookup = 0;
+export async function reserveBookLookup() {
+  if (!isDemoMode()) return live.reserveBookLookup();
+  const slot = Math.max(Date.now(), nextDemoLookup);
+  if (slot > Date.now() + 15000)
+    throw new Error("Book lookup is busy. Please retry shortly.");
+  nextDemoLookup = slot + 1100;
+  await new Promise((resolve) => setTimeout(resolve, slot - Date.now()));
 }

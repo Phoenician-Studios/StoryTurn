@@ -42,3 +42,44 @@ describe("searchOpenLibrary", () => {
     expect(await searchOpenLibrary("   ")).toEqual([]);
   });
 });
+
+it("retains the scanned ISBN and exact edition metadata rather than an arbitrary ISBN", async () => {
+  const { lookupIsbn } = await import("@/lib/open-library");
+  const fetchImpl = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        key: "/books/OL1M",
+        title: "Book",
+        isbn_13: ["9780804429573"],
+        physical_format: "Paperback",
+        publishers: ["Publisher"],
+        publish_date: "2005",
+        authors: [{ key: "/authors/OL1A" }],
+        works: [{ key: "/works/OL1W" }],
+      }),
+    })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ name: "Author" }) });
+  const result = await lookupIsbn("0060775858", { fetchImpl });
+  expect(result).toMatchObject({
+    isbn: "9780060775858",
+    editionKey: "/books/OL1M",
+    format: "Paperback",
+    authors: ["Author"],
+    openLibraryKey: "/works/OL1W",
+  });
+  expect(fetchImpl.mock.calls[0][0]).toBe(
+    "https://openlibrary.org/isbn/9780060775858.json",
+  );
+});
+it("separates unknown ISBNs from upstream failures and rejects invalid input without fetching", async () => {
+  const { lookupIsbn } = await import("@/lib/open-library");
+  const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+  expect(await lookupIsbn("9780060775858", { fetchImpl })).toBeNull();
+  fetchImpl.mockResolvedValue({ ok: false, status: 503 });
+  await expect(lookupIsbn("9780060775858", { fetchImpl })).rejects.toThrow(/unavailable/);
+  fetchImpl.mockClear();
+  await expect(lookupIsbn("1234", { fetchImpl })).rejects.toThrow(/valid ISBN/);
+  expect(fetchImpl).not.toHaveBeenCalled();
+});

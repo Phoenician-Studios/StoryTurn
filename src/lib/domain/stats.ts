@@ -1,3 +1,4 @@
+import { editionLabel } from "@/lib/book-edition";
 import type {
   Book,
   DashboardFilter,
@@ -9,6 +10,7 @@ import { sessionDateKey } from "@/lib/domain/sessions";
 
 export interface BookReadStat {
   title: string;
+  edition?: string;
   bookId: string | null;
   readCount: number;
   lastReadAt: string | null;
@@ -87,6 +89,10 @@ export function computeDashboardStats(params: {
   const allTime = [...tallies.values()]
     .map((t) => ({
       title: t.title,
+      edition:
+        t.bookId && bookById.get(t.bookId)
+          ? editionLabel(bookById.get(t.bookId)!)
+          : undefined,
       bookId: t.bookId,
       readCount: t.count,
       lastReadAt: t.last,
@@ -97,14 +103,11 @@ export function computeDashboardStats(params: {
         (b.lastReadAt ?? "").localeCompare(a.lastReadAt ?? ""),
     );
 
-  const recent = allTime.filter(
-    (t) => t.lastReadAt && t.lastReadAt >= cutoffKey,
-  );
+  const recent = allTime.filter((t) => t.lastReadAt && t.lastReadAt >= cutoffKey);
 
   return {
-    totalBooksLogged: params.sessionBooks.filter((sb) =>
-      matchedIds.has(sb.sessionId),
-    ).length,
+    totalBooksLogged: params.sessionBooks.filter((sb) => matchedIds.has(sb.sessionId))
+      .length,
     uniqueTitles: allTime.length,
     sessionsCompleted: matched.length,
     recent,

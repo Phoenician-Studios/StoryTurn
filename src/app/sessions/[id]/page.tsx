@@ -199,7 +199,15 @@ export default async function SessionPage({
               key={detail.session.id}
               books={detail.library
                 .filter((book) => selectedBookIds.has(book.id))
-                .map(({ id, title, coverUrl }) => ({ id, title, coverUrl }))}
+                .map(({ id, title, coverUrl, isbn, format, publisher, editionYear }) => ({
+                  id,
+                  title,
+                  coverUrl,
+                  isbn,
+                  format,
+                  publisher,
+                  editionYear,
+                }))}
               selectedIds={[...selectedBookIds]}
             />
           </div>

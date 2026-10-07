@@ -98,6 +98,10 @@ export function mapBook(row: Row): Book {
     openLibraryKey: strOrNull(row, "open_library_key"),
     coverUrl: strOrNull(row, "cover_url"),
     isbn: strOrNull(row, "isbn"),
+    editionKey: strOrNull(row, "edition_key"),
+    format: strOrNull(row, "format"),
+    publisher: strOrNull(row, "publisher"),
+    editionYear: strOrNull(row, "edition_year"),
     createdAt: str(row, "created_at"),
   };
 }
