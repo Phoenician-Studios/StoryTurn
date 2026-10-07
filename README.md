@@ -15,6 +15,10 @@ Know whose night it is for bedtime reading. StoryTurn helps parents (and grandpa
 - QStash-ready cron endpoint to generate upcoming sessions
 - Vitest unit suite + GitHub Actions CI (`lint`, `test`, `build`)
 
+Shelf scanning supports ISBN barcodes and typed ISBNs, exact edition lookup, immediate saving with session-only Undo, and confirmed bulk removal. Migrations `011_book_editions.sql` and `012_scan_session_safety.sql` are required before deploying this feature (applied to StoryTurn on 2026-10-07). It preserves the already-deployed wishlist operations while replacing work-only uniqueness with edition identity. Legacy records retain their references and are labeled as unverified editions; no automatic identity backfill or merge is performed. Set `OPEN_LIBRARY_CONTACT` to a real contact address if available.
+
+Camera verification still requires physical iPhone Safari and Android Chrome testing over HTTPS. Reload and tab-close warnings are browser-controlled and may be skipped on mobile; confirmed books remain saved. Scan state is not restored after navigation or reload.
+
 Product plan: [`docs/features/bedtime-readers-feature-plan.md`](docs/features/bedtime-readers-feature-plan.md)
 
 ## Stack
@@ -60,7 +64,7 @@ npm run build
 See [`.env.example`](.env.example).
 
 1. Create a Supabase project; enable Email + Google providers and password recovery.
-2. Apply all files in `supabase/migrations/` in numeric order. Existing deployments must apply migrations 003–009 before using parent invitations or schedule management.
+2. Apply all files in `supabase/migrations/` in numeric order. Existing deployments must apply migrations 003–012 before using parent invitations or schedule management.
 3. Set the Supabase, Plunk, and QStash keys in `.env.local`, then set `FORCE_DEMO_MODE=0` to use the live database.
 4. Configure QStash to `POST /api/cron/generate-sessions` daily (or call with `x-cron-secret: $CRON_SECRET` locally).
 5. Deploy on Vercel. Production uses `https://www.storyturn.app` (`storyturn.app` redirects to `www`). Set `NEXT_PUBLIC_APP_URL` to that URL and `FORCE_DEMO_MODE=0`. Auth callbacks use `${NEXT_PUBLIC_APP_URL}/auth/callback`, which must be allowed in the Supabase redirect list.

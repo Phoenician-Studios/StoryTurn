@@ -1,6 +1,12 @@
+import type { EditionMetadata } from "@/lib/book-edition";
 import { sessionPageBounds } from "@/lib/domain/session-presentation";
 
-export type LibraryBook = { id: string; title: string; coverUrl?: string | null };
+export type LibraryBook = {
+  id: string;
+  title: string;
+  coverUrl?: string | null;
+  isbn?: string | null;
+} & EditionMetadata;
 export type LibraryPage = {
   items: LibraryBook[];
   page: number;
@@ -25,7 +31,15 @@ export function paginateLibrary(
   return {
     items: matches
       .slice(bounds.from, bounds.to + 1)
-      .map(({ id, title, coverUrl }) => ({ id, title, coverUrl: coverUrl ?? null })),
+      .map(({ id, title, coverUrl, isbn, format, publisher, editionYear }) => ({
+        id,
+        title,
+        coverUrl: coverUrl ?? null,
+        ...(format !== undefined ? { format } : {}),
+        ...(publisher !== undefined ? { publisher } : {}),
+        ...(editionYear !== undefined ? { editionYear } : {}),
+        ...(isbn !== undefined ? { isbn } : {}),
+      })),
     page: bounds.page,
     pageCount: bounds.pageCount,
     total: bounds.total,

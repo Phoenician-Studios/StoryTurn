@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { appUrl, isDemoMode } from "@/lib/config";
 import {
-  addBookFromSearch,
+  getCurrentMember,
+  reserveBookLookup,
   addKid,
   deleteKid,
   updateKid,
@@ -180,21 +181,21 @@ export async function saveScheduleAction(formData: FormData) {
 }
 
 export async function searchBooksAction(query: string) {
-  return searchOpenLibrary(query, { limit: 8 });
+  if (!(await getCurrentMember())) throw new Error("Join a family first");
+  try {
+    return await searchOpenLibrary(query.slice(0, 120), {
+      limit: 8,
+      beforeRequest: reserveBookLookup,
+    });
+  } catch {
+    throw new Error("Book search is unavailable. Please retry shortly.");
+  }
 }
 
 export async function addBookAction(formData: FormData) {
-  await addBookFromSearch({
-    title: String(formData.get("title")),
-    authors: String(formData.get("authors") ?? "")
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean),
-    openLibraryKey: String(formData.get("openLibraryKey") || "") || null,
-    coverUrl: String(formData.get("coverUrl") || "") || null,
-    isbn: String(formData.get("isbn") || "") || null,
-  });
-  revalidatePath("/library");
+  const { addEditionAction } = await import("@/app/book-actions");
+  const result = await addEditionAction(String(formData.get("editionKey") ?? ""));
+  if (!result.ok) throw new Error(result.error);
 }
 
 export async function cancelSessionAction(sessionId: string) {

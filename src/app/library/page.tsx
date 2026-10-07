@@ -2,6 +2,8 @@ import { BackLink } from "@/components/back-link";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
+import { BookScanner } from "@/components/book-scanner";
+import { LibraryCollection } from "@/components/library-collection";
 import { BookSearch } from "@/components/book-search";
 import { getCurrentMember, getCurrentUser, getLibrary } from "@/lib/data";
 
@@ -26,10 +28,13 @@ export default async function LibraryPage() {
 
         <section className="story-panel mt-6 rounded-2xl p-5 animate-rise-delay">
           <h2 className="font-display text-xl">Find a book</h2>
+          <div className="mt-3">
+            <BookScanner />
+          </div>
           <div className="mt-4">
             <BookSearch
               collectionKeys={books.flatMap((book) =>
-                book.openLibraryKey ? [book.openLibraryKey] : [],
+                book.editionKey ? [book.editionKey] : [],
               )}
             />
           </div>
@@ -37,33 +42,7 @@ export default async function LibraryPage() {
 
         <section className="mt-8">
           <h2 className="font-display text-xl">In your collection</h2>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-            {books.map((book) => (
-              <li
-                key={book.id}
-                className="story-panel flex items-center gap-3 rounded-2xl px-4 py-3"
-              >
-                {book.coverUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={book.coverUrl}
-                    alt=""
-                    className="h-14 w-10 shrink-0 rounded object-cover"
-                  />
-                ) : (
-                  <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded bg-secondary text-xs text-muted-foreground">
-                    Book
-                  </div>
-                )}
-                <div className="min-w-0 break-words">
-                  <p className="font-medium">{book.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {book.authors.join(", ") || "Unknown author"}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <LibraryCollection books={books} />
         </section>
       </main>
     </div>

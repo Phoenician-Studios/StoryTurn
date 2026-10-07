@@ -183,7 +183,7 @@ export function addKid(name: string, age: number): Kid {
   return kid;
 }
 
-export function addBookFromSearch(input: {
+function addBookFromSearch(input: {
   title: string;
   authors: string[];
   openLibraryKey: string | null;
@@ -748,4 +748,75 @@ export function getLibraryPage(query: string, page = 1) {
   const member = getCurrentMember();
   if (!member) throw new Error("Sign in to choose library books");
   return paginateLibrary(getLibrary(), query, page);
+}
+
+const scanSessions = new Map<string, { memberId: string; expires: number }>();
+const scanInsertions = new Map<string, string>();
+export function startBookScan() {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  const key = crypto.randomUUID();
+  scanSessions.set(key, { memberId: member.id, expires: Date.now() + 4 * 3600000 });
+  return key;
+}
+export function finishBookScan(key: string) {
+  const member = getCurrentMember();
+  if (scanSessions.get(key)?.memberId === member?.id) scanSessions.delete(key);
+}
+function requireScan(key: string) {
+  const session = scanSessions.get(key);
+  if (
+    !session ||
+    session.memberId !== getCurrentMember()?.id ||
+    session.expires < Date.now()
+  )
+    throw new Error("Scan session ended");
+}
+export function saveBookEdition(
+  input: import("@/lib/book-edition").BookInput,
+  scanId?: string,
+): import("@/lib/book-edition").SaveBookResult {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  if (scanId) requireScan(scanId);
+  const existing = state().books.find(
+    (b) =>
+      b.familyId === member.familyId &&
+      b.editionKey &&
+      (b.editionKey === input.editionKey || (input.isbn && b.isbn === input.isbn)),
+  );
+  if (existing) return { book: existing, created: false };
+  const book = addBookFromSearch(input);
+  Object.assign(book, {
+    editionKey: input.editionKey,
+    format: input.format,
+    publisher: input.publisher,
+    editionYear: input.editionYear,
+  });
+  if (scanId) scanInsertions.set(book.id, scanId);
+  return { book, created: true };
+}
+export function removeLibraryBooks(
+  ids: string[],
+  scanId?: string,
+): import("@/lib/book-edition").RemoveBookResult[] {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  if (scanId) requireScan(scanId);
+  return [...new Set(ids)].map((id) => {
+    const book = state().books.find((b) => b.id === id);
+    if (!book || book.familyId !== member.familyId) return { id, status: "removed" };
+    if (scanId && scanInsertions.get(id) !== scanId) return { id, status: "unavailable" };
+    if (state().sessionBooks.some((row) => row.bookId === id))
+      return { id, status: "referenced" };
+    state().books = state().books.filter((b) => b.id !== id);
+    return { id, status: "removed" };
+  });
+}
+export function correctBookFormat(id: string, format: string) {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  const book = state().books.find((b) => b.id === id && b.familyId === member.familyId);
+  if (!book || book.format) throw new Error("Book unavailable or format already set");
+  book.format = format;
 }

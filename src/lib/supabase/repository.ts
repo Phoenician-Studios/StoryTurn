@@ -592,25 +592,6 @@ export async function createInviteCode(
   return code;
 }
 
-export async function addBookFromSearch(input: {
-  title: string;
-  authors: string[];
-  openLibraryKey: string | null;
-  coverUrl: string | null;
-  isbn: string | null;
-}): Promise<void> {
-  const { supabase, member } = requireMember(await loadContext());
-  const { error } = await supabase.from("books").insert({
-    family_id: member.familyId,
-    title: input.title,
-    authors: input.authors,
-    open_library_key: input.openLibraryKey,
-    cover_url: input.coverUrl,
-    isbn: input.isbn,
-  });
-  assertNoError(error, "Could not add book");
-}
-
 export async function saveSchedule(input: {
   readerRotationMemberIds: string[];
   startDate: string;
@@ -923,7 +904,7 @@ export async function getLibraryPage(
   const scopedQuery = () => {
     const builder = supabase
       .from("books")
-      .select("id,title,cover_url", { count: "exact" })
+      .select("id,title,cover_url,isbn,format,publisher,edition_year", { count: "exact" })
       .eq("family_id", member.familyId);
     return term ? builder.ilike("title", `%${term}%`) : builder;
   };
@@ -940,9 +921,63 @@ export async function getLibraryPage(
       id: book.id,
       title: book.title,
       coverUrl: book.cover_url,
+      ...(book.format !== undefined ? { format: book.format } : {}),
+      ...(book.publisher !== undefined ? { publisher: book.publisher } : {}),
+      ...(book.edition_year !== undefined ? { editionYear: book.edition_year } : {}),
+      ...(book.isbn !== undefined ? { isbn: book.isbn } : {}),
     })),
     page: bounds.page,
     pageCount: bounds.pageCount,
     total: bounds.total,
   };
+}
+
+export async function startBookScan(): Promise<string> {
+  const { supabase } = requireMember(await loadContext());
+  const { data, error } = await supabase.rpc("start_book_scan");
+  assertNoError(error, "Could not start scan");
+  return data;
+}
+export async function finishBookScan(scanId: string) {
+  const { supabase } = requireMember(await loadContext());
+  const { error } = await supabase.rpc("finish_book_scan", { scan_id: scanId });
+  assertNoError(error, "Could not finish scan");
+}
+export async function saveBookEdition(
+  input: import("@/lib/book-edition").BookInput,
+  scanId?: string,
+): Promise<import("@/lib/book-edition").SaveBookResult> {
+  const { supabase } = requireMember(await loadContext());
+  const { data, error } = await supabase.rpc("save_book_edition", {
+    metadata: input,
+    scan_id: scanId ?? null,
+  });
+  assertNoError(error, "Could not save book. Please retry.");
+  return { book: mapBook(data[0].book), created: data[0].created };
+}
+export async function removeLibraryBooks(
+  ids: string[],
+  scanId?: string,
+): Promise<import("@/lib/book-edition").RemoveBookResult[]> {
+  const { supabase } = requireMember(await loadContext());
+  const { data, error } = await supabase.rpc("remove_library_books", {
+    book_ids: ids,
+    scan_id: scanId ?? null,
+  });
+  assertNoError(error, "Could not remove books. Please retry.");
+  return data;
+}
+export async function correctBookFormat(id: string, format: string) {
+  const { supabase } = requireMember(await loadContext());
+  const { error } = await supabase.rpc("correct_book_format", {
+    book_id: id,
+    label: format,
+  });
+  assertNoError(error, "Could not update format");
+}
+export async function reserveBookLookup() {
+  const { supabase } = requireMember(await loadContext());
+  const { data, error } = await supabase.rpc("reserve_book_lookup");
+  assertNoError(error, "Book lookup is busy. Please retry shortly.");
+  await new Promise((resolve) => setTimeout(resolve, data));
 }

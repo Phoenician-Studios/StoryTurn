@@ -113,7 +113,14 @@ export default async function DashboardPage({
                   key={`${book.bookId}-${book.title}`}
                   className="flex items-center justify-between gap-3"
                 >
-                  <span>{book.title}</span>
+                  <span>
+                    {book.title}
+                    {book.edition && (
+                      <span className="block text-xs text-muted-foreground">
+                        {book.edition}
+                      </span>
+                    )}
+                  </span>
                   <Badge variant="secondary">{book.readCount}×</Badge>
                 </li>
               ))}
@@ -130,7 +137,14 @@ export default async function DashboardPage({
                   key={`${book.bookId}-${book.title}-all`}
                   className="flex items-center justify-between gap-3"
                 >
-                  <span>{book.title}</span>
+                  <span>
+                    {book.title}
+                    {book.edition && (
+                      <span className="block text-xs text-muted-foreground">
+                        {book.edition}
+                      </span>
+                    )}
+                  </span>
                   <Badge variant="secondary">{book.readCount}×</Badge>
                 </li>
               ))}

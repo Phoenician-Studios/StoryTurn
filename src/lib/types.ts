@@ -44,6 +44,10 @@ export interface InviteCode {
 }
 
 export interface Book {
+  editionKey?: string | null;
+  format?: string | null;
+  publisher?: string | null;
+  editionYear?: string | null;
   id: string;
   familyId: string;
   title: string;

@@ -120,3 +120,17 @@
 - **Gap:** The status selector reopened canceled sessions without confirmation, and reusing the edit mutation could duplicate non-original reader assignments.
 - **Going forward:** Test every UI path that changes session status and preserve assignment rows when the requested readers match current readers.
 - **Pointers:** `ConfirmationForm`, `applyReassignment`, `persistAssignments`, `tests/session-book-form.test.ts`
+
+### 2026-10-07 — Scope ephemeral state to its owning session
+
+- **Source:** PR #18 · Greptile
+- **Gap:** Starting another tab's scan invalidated the first tab's server session, while a failed finish discarded queued ISBNs without a retry path.
+- **Going forward:** Keep independent tabs' session tokens independent. Preserve recoverable queue entries until a terminal transition succeeds, and test failed transitions as well as successful cleanup in demo and live paths.
+- **Pointers:** `start_book_scan`, `BookScanner.finish`, `tests/book-editions-database.test.ts`, `tests/book-scanner.test.ts`
+
+### 2026-10-07 — Keep mutation outcomes tenant-scoped
+
+- **Source:** PR #18 · Greptile
+- **Gap:** The security-definer removal RPC distinguished a foreign book UUID from an absent UUID using an unscoped existence check.
+- **Going forward:** Authorize and scope lookups before building outcomes. Foreign and absent identifiers must be indistinguishable; test both responses while asserting foreign records remain untouched.
+- **Pointers:** `remove_library_books`, `removeLibraryBooks`, `tests/book-editions-database.test.ts`, `tests/book-editions-demo.test.ts`
