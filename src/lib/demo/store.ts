@@ -1,3 +1,4 @@
+import type { SessionStatus } from "@/lib/types";
 import { paginateLibrary } from "@/lib/domain/library-page";
 import { paginateSessions } from "@/lib/domain/session-presentation";
 import {
@@ -728,8 +729,14 @@ export function deleteKid(kidId: string): void {
   state().kids = state().kids.filter((k) => k.id !== kid.id);
 }
 
-export function getFamilySessionPage(requestedPage?: string | string[]) {
-  const pagination = paginateSessions(listFamilySessions(), requestedPage);
+export function getFamilySessionPage(
+  requestedPage?: string | string[],
+  status?: SessionStatus,
+) {
+  const pagination = paginateSessions(
+    listFamilySessions().filter((session) => !status || session.status === status),
+    requestedPage,
+  );
   const ids = new Set(pagination.items.map((s) => s.id));
   const assignments = state().assignments.filter(
     (a) => ids.has(a.sessionId) && a.isCurrent,

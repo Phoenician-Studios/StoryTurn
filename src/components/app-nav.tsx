@@ -1,5 +1,6 @@
 "use client";
 
+import { UserRound } from "lucide-react";
 import { ConfirmationForm } from "@/components/confirmation-form";
 
 import Link from "next/link";
@@ -63,7 +64,7 @@ export function AppNav({ displayName }: { displayName: string }) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                className="rounded-md px-2.5 py-1.5 text-sm font-semibold text-foreground transition hover:bg-secondary hover:text-foreground"
               >
                 {link.label}
               </Link>
@@ -71,8 +72,12 @@ export function AppNav({ displayName }: { displayName: string }) {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <span className="hidden text-sm text-muted-foreground md:inline">
-            {displayName}
+          <span
+            className="hidden max-w-40 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs text-muted-foreground md:inline-flex"
+            title={displayName}
+          >
+            <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{displayName}</span>
           </span>
           <ConfirmationForm
             title="Sign out?"
@@ -119,13 +124,16 @@ export function AppNav({ displayName }: { displayName: string }) {
             aria-label="Mobile navigation"
             className="mx-auto flex max-w-5xl flex-col gap-1 px-4 pb-3"
           >
-            <span className="px-3 py-2 text-sm text-muted-foreground">{displayName}</span>
+            <span className="mb-1 flex items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
+              <UserRound className="size-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 break-words">{displayName}</span>
+            </span>
             {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-3 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                className="rounded-lg px-3 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
               >
                 {link.label}
               </Link>

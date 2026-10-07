@@ -39,20 +39,23 @@ export default async function LibraryPage() {
           <h2 className="font-display text-xl">In your collection</h2>
           <ul className="mt-4 grid gap-3 sm:grid-cols-2">
             {books.map((book) => (
-              <li key={book.id} className="story-panel flex gap-3 rounded-2xl p-4">
+              <li
+                key={book.id}
+                className="story-panel flex items-center gap-3 rounded-2xl px-4 py-3"
+              >
                 {book.coverUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={book.coverUrl}
                     alt=""
-                    className="h-20 w-14 rounded object-cover"
+                    className="h-14 w-10 shrink-0 rounded object-cover"
                   />
                 ) : (
-                  <div className="flex h-20 w-14 items-center justify-center rounded bg-secondary text-xs text-muted-foreground">
+                  <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded bg-secondary text-xs text-muted-foreground">
                     Book
                   </div>
                 )}
-                <div>
+                <div className="min-w-0 break-words">
                   <p className="font-medium">{book.title}</p>
                   <p className="text-sm text-muted-foreground">
                     {book.authors.join(", ") || "Unknown author"}

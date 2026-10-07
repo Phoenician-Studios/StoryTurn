@@ -87,27 +87,27 @@ export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
         </p>
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <ul className="space-y-3">
+      <ul className="grid gap-2 lg:grid-cols-2">
         {results.map((book) => (
           <li
             key={book.openLibraryKey}
-            className="flex flex-col gap-3 rounded-xl border border-border/80 bg-card/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+            className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-xl border border-border/80 bg-card/70 px-3 py-2 sm:grid-cols-[2.5rem_minmax(0,1fr)_auto]"
           >
-            <div className="flex gap-3">
+            <div className="contents">
               {book.coverUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={book.coverUrl}
                   alt=""
-                  className="h-16 w-12 rounded object-cover"
+                  className="h-14 w-10 rounded object-cover"
                 />
               ) : (
-                <div className="flex h-16 w-12 items-center justify-center rounded bg-secondary text-xs text-muted-foreground">
+                <div className="flex h-14 w-10 items-center justify-center rounded bg-secondary text-xs text-muted-foreground">
                   No cover
                 </div>
               )}
-              <div>
-                <p className="font-medium">{book.title}</p>
+              <div className="min-w-0 break-words">
+                <p className="font-medium leading-snug">{book.title}</p>
                 <p className="text-sm text-muted-foreground">
                   {book.authors.join(", ") || "Unknown author"}
                   {book.year ? ` · ${book.year}` : ""}
@@ -115,6 +115,7 @@ export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
               </div>
             </div>
             <form
+              className="col-start-2 justify-self-start sm:col-start-3 sm:row-start-1"
               action={async (formData) => {
                 try {
                   await addBookAction(formData);

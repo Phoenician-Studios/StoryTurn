@@ -1,3 +1,6 @@
+import Form from "next/form";
+import { NativeSelect } from "@/components/ui/native-select";
+import { sessionStatusFilter } from "@/lib/domain/session-presentation";
 import { ConfirmationForm } from "@/components/confirmation-form";
 import { BackLink } from "@/components/back-link";
 export const dynamic = "force-dynamic";
@@ -22,7 +25,7 @@ import { buttonVariants } from "@/components/ui/button";
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string | string[] }>;
+  searchParams: Promise<{ page?: string | string[]; status?: string | string[] }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -30,8 +33,9 @@ export default async function SchedulePage({
   if (!member) redirect("/onboarding");
   const admin = await getFamilyAdmin();
   if (!admin) redirect("/onboarding");
-  const { page: requestedPage } = await searchParams;
-  const pagination = await getFamilySessionPage(requestedPage);
+  const { page: requestedPage, status: requestedStatus } = await searchParams;
+  const status = sessionStatusFilter(requestedStatus);
+  const pagination = await getFamilySessionPage(requestedPage, status);
   const assignments = pagination.assignments;
   const sessions = pagination.items;
   const names = Object.fromEntries(admin.readers.map((r) => [r.id, r.displayName]));
@@ -149,7 +153,28 @@ export default async function SchedulePage({
           </ConfirmationForm>
         )}
         <section className="mt-8">
-          <h2 className="font-display text-xl">Upcoming & recent</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-xl">Upcoming & recent</h2>
+            <Form action="/schedule" scroll={false} className="flex items-center gap-2">
+              <Label htmlFor="session-status">Status</Label>
+              <div className="w-40">
+                <NativeSelect
+                  key={status ?? "all"}
+                  id="session-status"
+                  name="status"
+                  defaultValue={status ?? "all"}
+                >
+                  <option value="all">All statuses</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </NativeSelect>
+              </div>
+              <Button type="submit" variant="outline" size="sm">
+                Apply
+              </Button>
+            </Form>
+          </div>
           <ul className="mt-4 space-y-2">
             {sessions.map((session) => (
               <li key={session.id}>
@@ -176,7 +201,9 @@ export default async function SchedulePage({
             ))}
           </ul>
           {pagination.total === 0 ? (
-            <p className="mt-4 text-muted-foreground">No reading sessions yet.</p>
+            <p className="mt-4 text-muted-foreground">
+              {status ? `No ${status} sessions.` : "No reading sessions yet."}
+            </p>
           ) : (
             <nav
               aria-label="Session pages"
@@ -192,7 +219,7 @@ export default async function SchedulePage({
                     ) : (
                       <Link
                         key={page}
-                        href={`/schedule?page=${page}`}
+                        href={`/schedule?page=${page}${status ? `&status=${status}` : ""}`}
                         aria-label={`Page ${page}`}
                         aria-current={page === pagination.page ? "page" : undefined}
                         className={buttonVariants({

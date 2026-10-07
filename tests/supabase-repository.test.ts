@@ -405,3 +405,29 @@ it("starts the full library query while session books are still loading", async 
     await detail;
   }
 });
+
+it("filters both session count and rows by status within the current family", async () => {
+  fixture.tables.reading_sessions = Array.from({ length: 35 }, (_, i) => ({
+    id: `filtered-${String(i).padStart(2, "0")}`,
+    family_id: "family",
+    scheduled_for: new Date(Date.UTC(2026, 0, 1) + i * 86400000).toISOString(),
+    status: i % 2 === 0 ? "completed" : "scheduled",
+  }));
+  fixture.tables.reading_sessions.push({
+    id: "foreign",
+    family_id: "other",
+    status: "completed",
+    scheduled_for: "2040-01-01T19:30Z",
+  });
+  const page = await getFamilySessionPage("2", "completed");
+  expect(page).toMatchObject({ page: 2, pageCount: 2, total: 18 });
+  expect(page.items).toHaveLength(8);
+  expect(page.items.every((session) => session.status === "completed")).toBe(true);
+  expect(page.items.at(-1)?.id).toBe("filtered-00");
+  expect(await getFamilySessionPage("99", "cancelled")).toMatchObject({
+    items: [],
+    assignments: [],
+    total: 0,
+    page: 1,
+  });
+});

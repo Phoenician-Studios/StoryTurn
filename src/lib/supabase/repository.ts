@@ -1,3 +1,4 @@
+import type { SessionStatus } from "@/lib/types";
 import { librarySearchTerm, type LibraryPage } from "@/lib/domain/library-page";
 import { sessionPageBounds } from "@/lib/domain/session-presentation";
 import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
@@ -864,25 +865,31 @@ export async function deleteKid(kidId: string): Promise<void> {
   if (!data?.length) throw new Error("Child not found");
 }
 
-export async function getFamilySessionPage(requestedPage?: string | string[]) {
+export async function getFamilySessionPage(
+  requestedPage?: string | string[],
+  status?: SessionStatus,
+) {
   const { supabase, member } = requireMember(await loadContext());
-  const { count, error } = await supabase
+  const countQuery = supabase
     .from("reading_sessions")
     .select("id", { count: "exact", head: true })
     .eq("family_id", member.familyId);
+  const { count, error } = await (status ? countQuery.eq("status", status) : countQuery);
   assertNoError(error, "Could not count sessions");
   const { page, pageCount, total, from, to } = sessionPageBounds(
     count ?? 0,
     requestedPage,
   );
+  const sessionsQuery = supabase
+    .from("reading_sessions")
+    .select("*")
+    .eq("family_id", member.familyId);
+  const filteredQuery = status ? sessionsQuery.eq("status", status) : sessionsQuery;
   const items =
     total === 0
       ? []
       : await rows(
-          supabase
-            .from("reading_sessions")
-            .select("*")
-            .eq("family_id", member.familyId)
+          filteredQuery
             .order("scheduled_for", { ascending: false })
             .order("id", { ascending: false })
             .range(from, to),
