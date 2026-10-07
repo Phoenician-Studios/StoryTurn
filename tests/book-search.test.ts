@@ -70,7 +70,9 @@ it("debounces typing and ignores stale responses after clearing the input", asyn
     });
     expect(searchBooksAction).toHaveBeenCalledExactlyOnceWith("cats");
     expect(screen.getByRole("status").textContent).toBe("Searching…");
-    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect((input as HTMLInputElement).value).toBe("");
+    expect(document.activeElement).toBe(input);
     await act(async () => {
       resolve([
         {

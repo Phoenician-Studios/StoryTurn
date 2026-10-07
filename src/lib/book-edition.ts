@@ -16,7 +16,7 @@ export type RemoveBookResult = {
   status: "removed" | "referenced" | "unavailable";
 };
 export function editionLabel(book: EditionMetadata & { isbn?: string | null }) {
-  return [book.format || "Format unknown", book.publisher, book.editionYear, book.isbn]
+  return [book.format, book.publisher, book.editionYear, book.isbn]
     .filter(Boolean)
     .join(" · ");
 }

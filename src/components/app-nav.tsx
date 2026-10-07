@@ -64,7 +64,7 @@ export function AppNav({ displayName }: { displayName: string }) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-md px-2.5 py-1.5 text-sm font-semibold text-foreground transition hover:bg-secondary hover:text-foreground"
+                className="rounded-md px-2.5 py-1.5 text-base font-semibold text-foreground transition hover:bg-secondary hover:text-foreground"
               >
                 {link.label}
               </Link>
@@ -133,7 +133,7 @@ export function AppNav({ displayName }: { displayName: string }) {
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                className="rounded-lg px-3 py-3 text-base font-semibold text-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
               >
                 {link.label}
               </Link>

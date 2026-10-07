@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   startScanAction,
@@ -111,7 +112,7 @@ export function BookScanner() {
     }
     if (!retry) {
       seen.current.add(code);
-      setRows((current) => [...current, { isbn: code, status: "Queued" }]);
+      setRows((current) => [{ isbn: code, status: "Queued" }, ...current]);
     } else patch(code, { status: "Queued", retryable: false });
     queue.current.push(code);
     setMessage(`Captured ${code}`);
@@ -373,55 +374,83 @@ export function BookScanner() {
           </p>
           <ul className="space-y-3">
             {rows.map((row) => (
-              <li key={row.isbn} className="rounded border p-3">
+              <li
+                key={row.isbn}
+                className={`relative flex items-start gap-3 rounded-lg border p-3 ${row.status === "Added" ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30" : ""}`}
+              >
+                {row.retryable && (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    className="absolute right-1 top-1"
+                    aria-label={`Dismiss ${row.isbn}`}
+                    disabled={finishing}
+                    onClick={() =>
+                      setRows((current) =>
+                        current.filter((entry) => entry.isbn !== row.isbn),
+                      )
+                    }
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                )}
                 {row.book?.coverUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={row.book.coverUrl}
                     alt=""
-                    className="mb-2 h-16 w-12 rounded object-cover"
+                    className="h-16 w-12 shrink-0 rounded object-cover"
                   />
                 )}
-                <p className="font-semibold">{row.book?.title ?? row.isbn}</p>
-                {row.book && (
-                  <>
-                    <p>{row.book.authors.join(", ") || "Unknown author"}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {editionLabel(row.book)}
-                    </p>
-                  </>
-                )}
-                <p>{row.status}</p>
-                {row.undoable && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={rowBusy || finishing}
-                    onClick={() => void undo(row)}
+                <div className="min-w-0 flex-1 space-y-1 break-words pr-7">
+                  <p className="font-semibold">{row.book?.title ?? row.isbn}</p>
+                  {row.book && (
+                    <>
+                      <p>{row.book.authors.join(", ") || "Unknown author"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {editionLabel(row.book)}
+                      </p>
+                    </>
+                  )}
+                  <p
+                    className={`flex items-center gap-1.5 ${row.status === "Added" ? "font-medium text-green-700 dark:text-green-400" : ""}`}
                   >
-                    Undo
-                  </Button>
-                )}
-                {row.status === "Undone" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={finishing}
-                    onClick={() => capture(row.isbn, true)}
-                  >
-                    Add again
-                  </Button>
-                )}
-                {row.retryable && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={finishing}
-                    onClick={() => capture(row.isbn, true)}
-                  >
-                    Retry
-                  </Button>
-                )}
+                    {row.status === "Added" && (
+                      <Check className="size-4 shrink-0" aria-hidden="true" />
+                    )}
+                    {row.status}
+                  </p>
+                  {row.undoable && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={rowBusy || finishing}
+                      onClick={() => void undo(row)}
+                    >
+                      Undo
+                    </Button>
+                  )}
+                  {row.status === "Undone" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={finishing}
+                      onClick={() => capture(row.isbn, true)}
+                    >
+                      Add again
+                    </Button>
+                  )}
+                  {row.retryable && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={finishing}
+                      onClick={() => capture(row.isbn, true)}
+                    >
+                      Retry
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -464,9 +493,7 @@ export function BookScanner() {
         <DialogContent showCloseButton={!finishing}>
           <DialogTitle>End this scan session?</DialogTitle>
           <DialogDescription>
-            Saved books stay in your library. Undo ends and unresolved entries are lost.
-            Queued books will not be added; the current save will finish before you leave.
-            You can remove books later from your library.
+            Added books stay in your library. Pending scans and Undo will be cleared.
           </DialogDescription>
           <Button
             variant="outline"

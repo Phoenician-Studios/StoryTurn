@@ -205,3 +205,20 @@ it("retains retryable queued ISBNs when ending the session fails", async () => {
     "00000000-0000-0000-0000-000000000001",
   );
 });
+
+it("shows newest scans first and lets users dismiss failed lookups", async () => {
+  vi.mocked(scanBookAction).mockResolvedValue({
+    ok: false,
+    error: "No ISBN match. Try title search.",
+    kind: "unknown",
+  });
+  await open();
+  enter();
+  await screen.findByRole("button", { name: "Dismiss 9780060775858" });
+  enter("9780804429573");
+  await screen.findByRole("button", { name: "Dismiss 9780804429573" });
+  expect(screen.getAllByRole("listitem")[0].textContent).toContain("9780804429573");
+  fireEvent.click(screen.getByRole("button", { name: "Dismiss 9780060775858" }));
+  expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  expect(removeBooksAction).not.toHaveBeenCalled();
+});

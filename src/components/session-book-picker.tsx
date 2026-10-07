@@ -162,7 +162,7 @@ export function SessionBookPicker({
                       key={book.id}
                       type="button"
                       aria-pressed={selected.includes(book.id)}
-                      aria-label={`${book.title} (${editionLabel(book)})`}
+                      aria-label={`${book.title}${editionLabel(book) ? ` (${editionLabel(book)})` : ""}`}
                       onClick={() =>
                         setSelected((ids) =>
                           ids.includes(book.id)

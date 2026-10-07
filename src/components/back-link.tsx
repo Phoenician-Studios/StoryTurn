@@ -13,7 +13,7 @@ export function BackLink({
   return (
     <Link
       href={href}
-      className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${compact ? "mb-1" : "mb-4"}`}
+      className={`inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-base text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${compact ? "mb-1" : "mb-4"}`}
     >
       <ArrowLeft className="size-4" aria-hidden="true" />
       {label}

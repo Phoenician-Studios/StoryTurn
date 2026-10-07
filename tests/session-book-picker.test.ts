@@ -36,15 +36,15 @@ it("retains selections across server searches, pages, and closing the modal", as
   );
   await user.click(screen.getByRole("button", { name: "Add books from library" }));
   await user.click(
-    await screen.findByRole("button", { name: "First story (Format unknown)" }),
+    await screen.findByRole("button", { name: "First story" }),
   );
   await user.click(screen.getByRole("button", { name: "Next" }));
   await user.click(
-    await screen.findByRole("button", { name: "Second story (Format unknown)" }),
+    await screen.findByRole("button", { name: "Second story" }),
   );
   await user.type(screen.getByRole("textbox", { name: "Search library books" }), "found");
   await user.click(
-    await screen.findByRole("button", { name: "Found story (Format unknown)" }),
+    await screen.findByRole("button", { name: "Found story" }),
   );
   expect(searchLibraryBooksAction).toHaveBeenLastCalledWith("found", 1);
   await user.click(screen.getByRole("button", { name: /Done/ }));
@@ -92,7 +92,7 @@ it("renders cover tiles with keyboard selection and handles unavailable covers",
   render(createElement(SessionBookPicker, { books: [], selectedIds: [] }));
   await user.click(screen.getByRole("button", { name: "Add books from library" }));
   const tile = await screen.findByRole("button", {
-    name: "Cover story (Format unknown)",
+    name: "Cover story",
   });
   const image = tile.querySelector("img")!;
   expect(image.getAttribute("src")).toBe("https://covers.openlibrary.org/b/id/1-M.jpg");
@@ -107,7 +107,7 @@ it("renders cover tiles with keyboard selection and handles unavailable covers",
   expect(tile.querySelector("svg")).toBeTruthy();
   expect(
     screen
-      .getByRole("button", { name: "No cover (Format unknown)" })
+      .getByRole("button", { name: "No cover" })
       .querySelector("svg"),
   ).toBeTruthy();
 });
@@ -136,7 +136,7 @@ it("shows thumbnails for saved books and books selected in the modal", async () 
   ).toBe(savedCover);
   await user.click(screen.getByRole("button", { name: "Add books from library" }));
   await user.click(
-    await screen.findByRole("button", { name: "Added story (Format unknown)" }),
+    await screen.findByRole("button", { name: "Added story" }),
   );
   await user.click(screen.getByRole("button", { name: /Done/ }));
   expect(

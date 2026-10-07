@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState } from "react";
 import { searchBooksAction } from "@/app/actions";
 import { BookEditions } from "@/components/book-editions";
 import { Input } from "@/components/ui/input";
 import type { BookSearchResult } from "@/lib/open-library";
 
 export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +43,10 @@ export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="relative">
         <Input
+          ref={inputRef}
+          className="pr-11"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -53,6 +58,24 @@ export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
           aria-label="Search books"
           aria-describedby="book-search-hint"
         />
+        {query && (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Clear search"
+            className="absolute right-1 top-1/2 -translate-y-1/2"
+            onClick={() => {
+              setQuery("");
+              setResults([]);
+              setError(null);
+              setPending(false);
+              inputRef.current?.focus();
+            }}
+          >
+            <X aria-hidden="true" />
+          </Button>
+        )}
       </div>
       <p id="book-search-hint" className="text-sm text-muted-foreground">
         Type at least two characters to search.
@@ -63,11 +86,11 @@ export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
         </p>
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <ul className="grid gap-2 lg:grid-cols-2">
+      <ul className="grid items-start gap-2 lg:grid-cols-2">
         {results.map((book) => (
           <li
             key={book.openLibraryKey}
-            className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-xl border border-border/80 bg-card/70 px-3 py-2 sm:grid-cols-[2.5rem_minmax(0,1fr)_auto]"
+            className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 rounded-xl border border-border/80 bg-card/70 px-3 py-2 sm:grid-cols-[2.5rem_minmax(0,1fr)_auto]"
           >
             <div className="contents">
               {book.coverUrl ? (
