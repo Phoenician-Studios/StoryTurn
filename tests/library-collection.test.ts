@@ -114,3 +114,13 @@ it("adds concrete editions separately and keeps failed saves retryable", async (
       .disabled,
   ).toBe(false);
 });
+
+it("omits empty metadata and empty parentheses from collection labels", () => {
+  const { container } = render(createElement(LibraryCollection, { books: [books[0]] }));
+  expect(
+    screen.getByRole("checkbox", { name: "Select First" }),
+  ).toBeTruthy();
+  expect(
+    [...container.querySelectorAll("p")].every((line) => !!line.textContent?.trim()),
+  ).toBe(true);
+});

@@ -66,7 +66,9 @@ export function BookEditions({
           return (
             <div key={edition.editionKey} className="space-y-2 rounded border p-2">
               <p>{edition.title}</p>
-              <p className="text-sm text-muted-foreground">{editionLabel(edition)}</p>
+              {editionLabel(edition) && (
+                <p className="text-sm text-muted-foreground">{editionLabel(edition)}</p>
+              )}
               <Button
                 size="sm"
                 variant="secondary"

@@ -385,11 +385,12 @@ export function BookScanner() {
                     className="absolute right-1 top-1"
                     aria-label={`Dismiss ${row.isbn}`}
                     disabled={finishing}
-                    onClick={() =>
+                    onClick={() => {
+                      seen.current.delete(row.isbn);
                       setRows((current) =>
                         current.filter((entry) => entry.isbn !== row.isbn),
-                      )
-                    }
+                      );
+                    }}
                   >
                     <X aria-hidden="true" />
                   </Button>
@@ -407,9 +408,11 @@ export function BookScanner() {
                   {row.book && (
                     <>
                       <p>{row.book.authors.join(", ") || "Unknown author"}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {editionLabel(row.book)}
-                      </p>
+                      {editionLabel(row.book) && (
+                        <p className="text-sm text-muted-foreground">
+                          {editionLabel(row.book)}
+                        </p>
+                      )}
                     </>
                   )}
                   <p
@@ -493,7 +496,8 @@ export function BookScanner() {
         <DialogContent showCloseButton={!finishing}>
           <DialogTitle>End this scan session?</DialogTitle>
           <DialogDescription>
-            Added books stay in your library. Pending scans and Undo will be cleared.
+            Saved books stay in your library. The current save will finish; queued and
+            failed scans will be cleared. Undo will end.
           </DialogDescription>
           <Button
             variant="outline"

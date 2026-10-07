@@ -112,7 +112,7 @@ export function LibraryCollection({ books }: { books: Book[] }) {
           >
             <input
               type="checkbox"
-              aria-label={`Select ${book.title} (${editionLabel(book)})`}
+              aria-label={`Select ${book.title}${editionLabel(book) ? ` (${editionLabel(book)})` : ""}`}
               checked={selected.includes(book.id)}
               onChange={(e) =>
                 setSelected((ids) =>
@@ -133,7 +133,9 @@ export function LibraryCollection({ books }: { books: Book[] }) {
             <div className="min-w-0 flex-1 break-words">
               <p className="font-medium">{book.title}</p>
               <p>{book.authors.join(", ") || "Unknown author"}</p>
-              <p className="text-sm text-muted-foreground">{editionLabel(book)}</p>
+              {editionLabel(book) && (
+                <p className="text-sm text-muted-foreground">{editionLabel(book)}</p>
+              )}
               {!book.editionKey && (
                 <p className="text-xs text-muted-foreground">
                   Legacy entry: edition unverified

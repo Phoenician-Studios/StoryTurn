@@ -9,3 +9,8 @@ Captured by the primary agent on 2026-10-07 against HEAD `9278df8` plus this PRâ
 - `end-session.jpg`: simplified end-session warning at phone width.
 
 Backend corroboration: the demo server returned successful saves and the books appeared in the collection after ending the scan. Automated tests verify failed-row dismissal without deleting books, scan ordering, stale search responses after clearing, edition collapse without refetching, and format submission from the dialog.
+
+Review follow-up captures measured at HEAD `74e0597` plus the Greptile fixes, using this worktreeâ€™s demo server at 127.0.0.1:3457:
+
+- `library-phone-reviewed.jpg`: phone library with a 44px back-link touch target and 16px label.
+- `end-session-reviewed.jpg`: brief warning explicitly covers the current save, queued/failed scans, and Undo.
