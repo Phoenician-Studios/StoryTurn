@@ -755,8 +755,6 @@ const scanInsertions = new Map<string, string>();
 export function startBookScan() {
   const member = getCurrentMember();
   if (!member) throw new Error("Join a family first");
-  for (const [key, session] of scanSessions)
-    if (session.memberId === member.id) scanSessions.delete(key);
   const key = crypto.randomUUID();
   scanSessions.set(key, { memberId: member.id, expires: Date.now() + 4 * 3600000 });
   return key;
@@ -807,12 +805,8 @@ export function removeLibraryBooks(
   if (scanId) requireScan(scanId);
   return [...new Set(ids)].map((id) => {
     const book = state().books.find((b) => b.id === id);
-    if (!book) return { id, status: "removed" };
-    if (
-      book.familyId !== member.familyId ||
-      (scanId && scanInsertions.get(id) !== scanId)
-    )
-      return { id, status: "unavailable" };
+    if (!book || book.familyId !== member.familyId) return { id, status: "removed" };
+    if (scanId && scanInsertions.get(id) !== scanId) return { id, status: "unavailable" };
     if (state().sessionBooks.some((row) => row.bookId === id))
       return { id, status: "referenced" };
     state().books = state().books.filter((b) => b.id !== id);

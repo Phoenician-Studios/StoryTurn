@@ -1,3 +1,4 @@
+import type { BookInput } from "@/lib/book-edition";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { beforeAll, afterAll, expect, it } from "vitest";
@@ -5,13 +6,14 @@ let db: PGlite;
 let family: string;
 const user = "00000000-0000-0000-0000-000000000001";
 let scan: string;
-const metadata = {
+const metadata: BookInput = {
   title: "Book",
   authors: ["Author"],
   editionKey: "/books/OL1M",
   openLibraryKey: "/works/OL1W",
   isbn: "9780060775858",
   format: "Hardcover",
+  coverUrl: null,
 };
 beforeAll(async () => {
   db = new PGlite();
@@ -148,7 +150,17 @@ it("enforces family and scan ownership and keeps format separate from identity",
         [added.book.id],
       ])
     ).rows[0].status,
-  ).toBe("unavailable");
+  ).toBe("removed");
+  expect(
+    (
+      await db.query<{ status: string }>("select * from remove_library_books($1)", [
+        ["00000000-0000-0000-0000-000000000099"],
+      ])
+    ).rows[0].status,
+  ).toBe("removed");
+  expect(
+    (await db.query("select id from books where id=$1", [added.book.id])).rows,
+  ).toHaveLength(1);
   await expect(
     db.query("select correct_book_format($1,'Hardcover')", [added.book.id]),
   ).rejects.toThrow(/unavailable/);
@@ -190,4 +202,25 @@ it("preserves legacy wishlist promotion without granting scan ownership writes",
     ),
   ).rejects.toThrow(/permission/);
   await db.exec("reset role");
+});
+
+it("keeps saves and Undo active in the first tab after starting a second scan", async () => {
+  const first = (await db.query<{ id: string }>("select start_book_scan() as id")).rows[0]
+    .id;
+  const second = (await db.query<{ id: string }>("select start_book_scan() as id"))
+    .rows[0].id;
+  const added = await save(
+    { ...metadata, editionKey: "/books/OL77M", isbn: null },
+    first,
+  );
+  expect(added.created).toBe(true);
+  await db.query("select finish_book_scan($1)", [second]);
+  expect(
+    (
+      await db.query<{ status: string }>("select * from remove_library_books($1,$2)", [
+        [added.book.id],
+        first,
+      ])
+    ).rows[0].status,
+  ).toBe("removed");
 });

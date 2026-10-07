@@ -230,7 +230,8 @@ export function BookScanner() {
     leaving.current = true;
     setFinishing(true);
     stopCamera();
-    queue.current.forEach((code) =>
+    const waiting = [...queue.current];
+    waiting.forEach((code) =>
       patch(code, { status: "Not added: session ended", retryable: false }),
     );
     queue.current = [];
@@ -250,6 +251,14 @@ export function BookScanner() {
       }, 0);
     } catch {
       leaving.current = false;
+      waiting.forEach((code) =>
+        patch(code, {
+          status: "Not added: finish failed. Retry this ISBN.",
+          retryable: true,
+        }),
+      );
+      afterClose.current = null;
+      setConfirm(false);
       setMessage("Could not finish the session. Please retry.");
     } finally {
       setFinishing(false);

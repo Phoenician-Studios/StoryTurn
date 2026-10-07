@@ -147,14 +147,17 @@ Existing title search currently returns work-level results and arbitrary first I
 - Added demo/live save, removal, format, and scan APIs. Migration `011_book_editions.sql` serializes family mutations, enforces uniqueness, scopes Undo to scan insertions, preserves references, and paces lookups across instances at one request per 1.1 seconds.
 - Kept legacy identity unresolved explicitly without automatic backfill, merging, or reference rewrites. Scan ownership and edition fields are restricted to authorized RPCs; legacy column grants preserve wishlist promotion.
 - Found that production migration 010 is `family_library_wishlist`, renamed this feature migration to 011, and tested against the deployed SQL fixture. Replaced work-only uniqueness with edition identity while preserving wishlist operations and data.
-- Verified 133 tests, lint, TypeScript, and Webpack production build. Local browser checked real ISBN lookup/save and finish confirmation/persistence. Turbopack build was blocked by environment port binding restrictions; Webpack passed.
+- Verified 137 tests, lint, TypeScript, and Webpack production build. Local browser checked real ISBN lookup/save and finish confirmation/persistence. Turbopack build was blocked by environment port binding restrictions; Webpack passed.
 - Updated README and `.env.example` with migration and optional real `OPEN_LIBRARY_CONTACT` configuration. Migration 011 was applied to StoryTurn on 2026-10-07; application code has not been deployed.
+
+- Addressed all three Greptile review findings in PR #18: scans in separate tabs retain independent server sessions, failed finish leaves queued ISBNs retryable, and foreign/absent removal IDs have indistinguishable outcomes in demo and live paths.
+- Applied additive migration `012_scan_session_safety.sql` to StoryTurn on 2026-10-07, keeping deployed migration 011 immutable. Added database, demo, and scanner regressions and two durable agent lessons. All 137 tests, lint, TypeScript, and Webpack build pass.
 
 ### Remaining work
 
 1. Test physical iPhone Safari and Android Chrome over HTTPS: decode success, repeated captures, permission denial, backgrounding, close/back/reload guardrails, and a whole shelf session.
 2. Sample representative physical children's books and compare exact ISBN, title, authors, format, publisher, edition date, cover, lookup latency, and unknown/error outcomes. A local Goodnight Moon lookup exposed unexpected author metadata; do not claim reliable coverage yet.
-3. Review and merge the PR before deploying application code. Migration 011 is already applied; inspect legacy duplicate/unverified entries deliberately and preserve reading references.
+3. Review and merge the PR before deploying application code. Migrations 011 and 012 are already applied; inspect legacy duplicate/unverified entries deliberately and preserve reading references.
 
 ### Blockers / risks
 

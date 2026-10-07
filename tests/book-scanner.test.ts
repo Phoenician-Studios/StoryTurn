@@ -179,3 +179,29 @@ it("releases a camera stream that arrives after the scan was closed", async () =
   expect(stop).toHaveBeenCalled();
   expect(decoder.decode).not.toHaveBeenCalled();
 });
+
+it("retains retryable queued ISBNs when ending the session fails", async () => {
+  let resolve!: (value: Awaited<ReturnType<typeof scanBookAction>>) => void;
+  vi.mocked(scanBookAction)
+    .mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    )
+    .mockResolvedValue({ ok: true, book, created: false });
+  vi.mocked(finishScanAction).mockRejectedValueOnce(new Error("Network failure"));
+  await open();
+  enter();
+  enter("9780804429573");
+  fireEvent.click(screen.getByRole("button", { name: "Finish scanning" }));
+  fireEvent.click(await screen.findByRole("button", { name: "End session" }));
+  await act(async () => resolve({ ok: true, book, created: true }));
+  await screen.findByText("Could not finish the session. Please retry.");
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  await waitFor(() => expect(scanBookAction).toHaveBeenCalledTimes(2));
+  expect(scanBookAction).toHaveBeenLastCalledWith(
+    "9780804429573",
+    "00000000-0000-0000-0000-000000000001",
+  );
+});
