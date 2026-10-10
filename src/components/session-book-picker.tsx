@@ -92,9 +92,11 @@ export function SessionBookPicker({
                 />
                 <span className="min-w-0 break-words">
                   {bookDetails[id]?.title ?? "Selected book"}
-                  <span className="block text-xs text-muted-foreground">
-                    {editionLabel(bookDetails[id] ?? {})}
-                  </span>
+                  {editionLabel(bookDetails[id] ?? {}) && (
+                    <span className="block text-xs text-muted-foreground">
+                      {editionLabel(bookDetails[id] ?? {})}
+                    </span>
+                  )}
                 </span>
               </div>
               <Button
@@ -162,7 +164,7 @@ export function SessionBookPicker({
                       key={book.id}
                       type="button"
                       aria-pressed={selected.includes(book.id)}
-                      aria-label={`${book.title} (${editionLabel(book)})`}
+                      aria-label={`${book.title}${editionLabel(book) ? ` (${editionLabel(book)})` : ""}`}
                       onClick={() =>
                         setSelected((ids) =>
                           ids.includes(book.id)
@@ -175,9 +177,11 @@ export function SessionBookPicker({
                       <BookCover book={book} />
                       <span className="w-full text-sm font-medium leading-snug">
                         {book.title}
-                        <span className="block text-xs text-muted-foreground">
-                          {editionLabel(book)}
-                        </span>
+                        {editionLabel(book) && (
+                          <span className="block text-xs text-muted-foreground">
+                            {editionLabel(book)}
+                          </span>
+                        )}
                       </span>
                       {selected.includes(book.id) && (
                         <span

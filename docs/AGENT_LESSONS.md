@@ -134,3 +134,17 @@
 - **Gap:** The security-definer removal RPC distinguished a foreign book UUID from an absent UUID using an unscoped existence check.
 - **Going forward:** Authorize and scope lookups before building outcomes. Foreign and absent identifiers must be indistinguishable; test both responses while asserting foreign records remain untouched.
 - **Pointers:** `remove_library_books`, `removeLibraryBooks`, `tests/book-editions-database.test.ts`, `tests/book-editions-demo.test.ts`
+
+### 2026-10-07 — Dismissal must preserve recovery paths
+
+- **Source:** PR #19 · Greptile
+- **Gap:** Dismissing a failed scan removed its retry button but retained its ISBN in the duplicate-suppression set, silently blocking another attempt.
+- **Going forward:** When dismissing recoverable failures, release associated deduplication state and test retry by re-entering the dismissed value. Keep successful scans protected against repeats.
+- **Pointers:** `BookScanner`, `tests/book-scanner.test.ts`
+
+### 2026-10-07 — Check consumers when removing metadata fallbacks
+
+- **Source:** PR #19 · Greptile
+- **Gap:** Removing the unknown-format fallback left empty metadata elements and parentheses in collection checkbox labels.
+- **Going forward:** Treat optional display labels as optional throughout their consumers, including accessible names. Cover records with no metadata in rendered tests.
+- **Pointers:** `editionLabel`, `LibraryCollection`, `SessionBookPicker`, `tests/library-collection.test.ts`

@@ -1,4 +1,5 @@
 "use client";
+import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { correctFormatAction, removeBooksAction } from "@/app/book-actions";
 import { editionLabel } from "@/lib/book-edition";
@@ -12,38 +13,65 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 function FormatCorrection({ book }: { book: Book }) {
-  const [label, setLabel] = useState("");
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState(book.format ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   return (
-    <form
-      className="mt-2 flex flex-wrap gap-2"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setPending(true);
-        setError("");
-        try {
-          await correctFormatAction(book.id, label);
-        } catch {
-          setError("Could not set format. Refresh and retry.");
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
-      <Input
-        aria-label={`Format for ${book.title}`}
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        maxLength={80}
-        required
-        placeholder="Format, e.g. Paperback"
-      />
-      <Button type="submit" size="sm" variant="outline" disabled={pending}>
-        {pending ? "Saving…" : "Set format"}
+    <>
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        aria-label={`Edit format for ${book.title}`}
+        onClick={() => {
+          setLabel(book.format ?? "");
+          setError("");
+          setOpen(true);
+        }}
+      >
+        <Pencil aria-hidden="true" />
       </Button>
-      {error && <p role="alert">{error}</p>}
-    </form>
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          if (!pending) setOpen(value);
+        }}
+      >
+        <DialogContent showCloseButton={!pending}>
+          <DialogTitle>Edit book format</DialogTitle>
+          <DialogDescription>{book.title}</DialogDescription>
+          <form
+            className="mt-2 flex flex-wrap gap-2"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setPending(true);
+              setError("");
+              try {
+                await correctFormatAction(book.id, label);
+                setOpen(false);
+              } catch {
+                setError("Could not set format. Refresh and retry.");
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            <Input
+              aria-label={`Format for ${book.title}`}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              maxLength={80}
+              required
+              placeholder="Format, e.g. Paperback"
+            />
+            <Button type="submit" size="sm" variant="outline" disabled={pending}>
+              {pending ? "Saving…" : "Set format"}
+            </Button>
+            {error && <p role="alert">{error}</p>}
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 export function LibraryCollection({ books }: { books: Book[] }) {
@@ -84,7 +112,7 @@ export function LibraryCollection({ books }: { books: Book[] }) {
           >
             <input
               type="checkbox"
-              aria-label={`Select ${book.title} (${editionLabel(book)})`}
+              aria-label={`Select ${book.title}${editionLabel(book) ? ` (${editionLabel(book)})` : ""}`}
               checked={selected.includes(book.id)}
               onChange={(e) =>
                 setSelected((ids) =>
@@ -102,17 +130,19 @@ export function LibraryCollection({ books }: { books: Book[] }) {
                 className="h-14 w-10 shrink-0 rounded object-cover"
               />
             )}
-            <div className="min-w-0 break-words">
+            <div className="min-w-0 flex-1 break-words">
               <p className="font-medium">{book.title}</p>
               <p>{book.authors.join(", ") || "Unknown author"}</p>
-              <p className="text-sm text-muted-foreground">{editionLabel(book)}</p>
+              {editionLabel(book) && (
+                <p className="text-sm text-muted-foreground">{editionLabel(book)}</p>
+              )}
               {!book.editionKey && (
                 <p className="text-xs text-muted-foreground">
                   Legacy entry: edition unverified
                 </p>
               )}
-              {!book.format && <FormatCorrection book={book} />}
             </div>
+            {!book.format && <FormatCorrection book={book} />}
           </li>
         ))}
       </ul>

@@ -12,6 +12,7 @@ export function BookEditions({
   collectionKeys: string[];
 }) {
   const [editions, setEditions] = useState<Edition[]>([]);
+  const [expanded, setExpanded] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [more, setMore] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -27,6 +28,7 @@ export function BookEditions({
       setMore(result.hasMore);
       setOffset((current) => current + 10);
       setLoaded(true);
+      setExpanded(true);
     } catch {
       setError("Could not load editions. Please retry.");
     } finally {
@@ -45,41 +47,57 @@ export function BookEditions({
           {pending ? "Loading editions…" : "Choose edition"}
         </Button>
       )}
-      {loaded && !editions.length && <p>No editions found. Try the ISBN scanner.</p>}
-      {editions.map((edition) => {
-        const collected = [...collectionKeys, ...added].includes(edition.editionKey);
-        return (
-          <div key={edition.editionKey} className="space-y-2 rounded border p-2">
-            <p>{edition.title}</p>
-            <p className="text-sm text-muted-foreground">{editionLabel(edition)}</p>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={collected || !!pending}
-              onClick={async () => {
-                setPending(edition.editionKey);
-                setError("");
-                try {
-                  const result = await addEditionAction(edition.editionKey);
-                  if (result.ok) setAdded((current) => [...current, edition.editionKey]);
-                  else setError(result.error);
-                } catch {
-                  setError("Could not add edition. Please retry.");
-                } finally {
-                  setPending(null);
-                }
-              }}
-            >
-              {pending === edition.editionKey
-                ? "Adding…"
-                : collected
-                  ? "In collection"
-                  : "Add to library"}
-            </Button>
-          </div>
-        );
-      })}
-      {more && (
+      {loaded && (
+        <Button
+          size="sm"
+          variant="secondary"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? "Collapse editions" : "Show editions"}
+        </Button>
+      )}
+      {expanded && loaded && !editions.length && (
+        <p>No editions found. Try the ISBN scanner.</p>
+      )}
+      {expanded &&
+        editions.map((edition) => {
+          const collected = [...collectionKeys, ...added].includes(edition.editionKey);
+          return (
+            <div key={edition.editionKey} className="space-y-2 rounded border p-2">
+              <p>{edition.title}</p>
+              {editionLabel(edition) && (
+                <p className="text-sm text-muted-foreground">{editionLabel(edition)}</p>
+              )}
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={collected || !!pending}
+                onClick={async () => {
+                  setPending(edition.editionKey);
+                  setError("");
+                  try {
+                    const result = await addEditionAction(edition.editionKey);
+                    if (result.ok)
+                      setAdded((current) => [...current, edition.editionKey]);
+                    else setError(result.error);
+                  } catch {
+                    setError("Could not add edition. Please retry.");
+                  } finally {
+                    setPending(null);
+                  }
+                }}
+              >
+                {pending === edition.editionKey
+                  ? "Adding…"
+                  : collected
+                    ? "In collection"
+                    : "Add to library"}
+              </Button>
+            </div>
+          );
+        })}
+      {expanded && more && (
         <Button
           size="sm"
           variant="outline"

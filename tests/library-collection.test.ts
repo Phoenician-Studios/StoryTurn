@@ -58,7 +58,9 @@ it("requires confirmation for bulk removal and explains books retained for histo
 it("lets a user fill missing format without sending identity fields", async () => {
   vi.mocked(correctFormatAction).mockResolvedValue(undefined);
   render(createElement(LibraryCollection, { books: [books[0]] }));
-  fireEvent.change(screen.getByRole("textbox", { name: "Format for First" }), {
+  expect(screen.queryByRole("textbox", { name: "Format for First" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Edit format for First" }));
+  fireEvent.change(await screen.findByRole("textbox", { name: "Format for First" }), {
     target: { value: "Paperback" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Set format" }));
@@ -97,6 +99,10 @@ it("adds concrete editions separately and keeps failed saves retryable", async (
   );
   fireEvent.click(screen.getByRole("button", { name: "Choose edition" }));
   await screen.findByText("Paperback");
+  fireEvent.click(screen.getByRole("button", { name: "Collapse editions" }));
+  expect(screen.queryByText("Paperback")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Show editions" }));
+  expect(editionsAction).toHaveBeenCalledTimes(1);
   expect(
     (screen.getByRole("button", { name: "In collection" }) as HTMLButtonElement).disabled,
   ).toBe(true);
@@ -107,4 +113,14 @@ it("adds concrete editions separately and keeps failed saves retryable", async (
     (screen.getByRole("button", { name: "Add to library" }) as HTMLButtonElement)
       .disabled,
   ).toBe(false);
+});
+
+it("omits empty metadata and empty parentheses from collection labels", () => {
+  const { container } = render(createElement(LibraryCollection, { books: [books[0]] }));
+  expect(
+    screen.getByRole("checkbox", { name: "Select First" }),
+  ).toBeTruthy();
+  expect(
+    [...container.querySelectorAll("p")].every((line) => !!line.textContent?.trim()),
+  ).toBe(true);
 });
