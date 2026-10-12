@@ -148,7 +148,7 @@ export function AppNav({ displayName }: { displayName: string }) {
               <Button
                 type="submit"
                 variant="ghost"
-                className="min-h-11 w-full justify-start px-3 text-muted-foreground"
+                className="w-full justify-start px-3 text-muted-foreground"
               >
                 Sign out
               </Button>

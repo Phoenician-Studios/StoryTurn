@@ -70,7 +70,6 @@ export function SessionBookPicker({
       <Button
         type="button"
         variant="outline"
-        className="min-h-11"
         onClick={() => {
           startLoading();
           setOpen(true);
@@ -231,7 +230,7 @@ export function SessionBookPicker({
               )}
             </>
           )}
-          <Button type="button" className="min-h-11" onClick={() => setOpen(false)}>
+          <Button type="button" onClick={() => setOpen(false)}>
             Done · {selected.length} selected
           </Button>
         </DialogContent>

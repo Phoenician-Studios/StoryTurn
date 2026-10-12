@@ -25,7 +25,7 @@ export default async function OnboardingPage() {
         description="You will return to the sign-in page."
         confirmLabel="Sign out"
       >
-        <Button type="submit" variant="ghost" className="min-h-11 gap-2">
+        <Button type="submit" variant="ghost" className="gap-2">
           <ArrowLeft className="size-4" aria-hidden="true" />
           Back to sign in
         </Button>

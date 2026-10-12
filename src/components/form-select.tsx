@@ -64,7 +64,7 @@ export function FormSelect({
       <SelectTrigger
         id={id}
         aria-label={ariaLabel}
-        className={`min-h-11 w-full text-base sm:text-sm ${className ?? ""}`}
+        className={`w-full text-base sm:text-sm ${className ?? ""}`}
       >
         <SelectValue />
       </SelectTrigger>

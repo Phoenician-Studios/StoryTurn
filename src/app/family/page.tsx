@@ -81,13 +81,13 @@ export default async function FamilyPage({
                           aria-label={`Name for ${reader.displayName}`}
                           defaultValue={reader.displayName}
                           required
-                          className="min-h-11 text-base sm:text-sm"
+                          className="text-base sm:text-sm"
                         />
                       </label>
                       {reader.id === member.id ? (
                         <div className="text-sm">
                           <span>Access</span>
-                          <p className="flex min-h-11 items-center text-muted-foreground">
+                          <p className="flex h-8 items-center text-muted-foreground">
                             Parent (you)
                           </p>
                           <input type="hidden" name="role" value={reader.role} />
@@ -109,7 +109,7 @@ export default async function FamilyPage({
                       <Button
                         type="submit"
                         variant="outline"
-                        className="min-h-11 w-full self-end sm:w-auto"
+                        className="w-full self-end sm:w-auto"
                       >
                         Save reader
                       </Button>
