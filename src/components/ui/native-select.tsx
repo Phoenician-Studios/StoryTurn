@@ -8,7 +8,7 @@ export function NativeSelect({ className, ...props }: ComponentProps<"select">) 
       <select
         {...props}
         className={cn(
-          "min-h-11 w-full appearance-none rounded-lg border border-input bg-background py-2 pl-3 pr-10 text-base text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50 sm:text-sm",
+          "h-8 w-full appearance-none rounded-lg border border-input bg-background py-1 pl-3 pr-10 text-base text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50 sm:text-sm",
           className,
         )}
       />
