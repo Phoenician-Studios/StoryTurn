@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { loginAction } from "@/app/actions";
+import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,12 @@ export default function SignupPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           In demo mode, signing up just creates a local reader profile.
         </p>
-        <form action={loginAction} className="mt-5 space-y-4">
+        <ToastForm
+          action={loginAction}
+          successMessage="Account ready"
+          redirects
+          className="mt-5 space-y-4"
+        >
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" required />
@@ -26,7 +32,7 @@ export default function SignupPage() {
           <Button type="submit" className="w-full">
             Sign up
           </Button>
-        </form>
+        </ToastForm>
         <p className="mt-4 text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link href="/login" className="text-primary hover:underline">

@@ -1,10 +1,9 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import {
-  cancelSessionAction,
-  updateSessionAction,
-} from "@/app/actions";
+import { updateSessionAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
+import { CancelSessionForm } from "@/components/cancel-session-form";
+import { ToastForm } from "@/components/toast-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -100,8 +99,10 @@ export default async function SessionPage({
           </section>
         )}
 
-        <form
+        <ToastForm
           action={updateSessionAction}
+          successMessage="Session updated"
+          redirects
           className="story-panel mt-6 space-y-4 rounded-2xl p-5 animate-rise-delay"
         >
           <input type="hidden" name="sessionId" value={id} />
@@ -199,20 +200,10 @@ export default async function SessionPage({
           <div className="flex flex-wrap gap-3">
             <Button type="submit">Save changes</Button>
           </div>
-        </form>
+        </ToastForm>
 
         {detail.session.status !== "cancelled" && (
-          <form
-            action={async () => {
-              "use server";
-              await cancelSessionAction(id);
-            }}
-            className="mt-4"
-          >
-            <Button type="submit" variant="destructive">
-              Cancel this reading session
-            </Button>
-          </form>
+          <CancelSessionForm sessionId={id} />
         )}
       </main>
     </div>

@@ -1,7 +1,9 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import { addKidAction, createInviteAction } from "@/app/actions";
+import { addKidAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
+import { CreateInviteForm } from "@/components/create-invite-form";
+import { ToastForm } from "@/components/toast-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +68,11 @@ export default function FamilyPage() {
                 </li>
               ))}
             </ul>
-            <form action={addKidAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_5rem_auto]">
+            <ToastForm
+              action={addKidAction}
+              successMessage="Kid added"
+              className="mt-4 grid gap-3 sm:grid-cols-[1fr_5rem_auto]"
+            >
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input id="name" name="name" required />
@@ -78,7 +84,7 @@ export default function FamilyPage() {
               <div className="flex items-end">
                 <Button type="submit">Add</Button>
               </div>
-            </form>
+            </ToastForm>
           </section>
         </div>
 
@@ -90,11 +96,7 @@ export default function FamilyPage() {
                 Share a code so another adult can join as a reader.
               </p>
             </div>
-            <form action={createInviteAction}>
-              <Button type="submit" variant="secondary">
-                Generate code
-              </Button>
-            </form>
+            <CreateInviteForm />
           </div>
           <ul className="mt-4 space-y-2">
             {admin.invites.map((invite) => (

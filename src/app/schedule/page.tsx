@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { saveScheduleAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
+import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,8 +42,9 @@ export default function SchedulePage() {
           </p>
         </section>
 
-        <form
+        <ToastForm
           action={saveScheduleAction}
+          successMessage="Schedule saved and nights generated"
           className="story-panel mt-6 space-y-4 rounded-2xl p-5 animate-rise-delay"
         >
           <h2 className="font-display text-xl">Rotation</h2>
@@ -109,7 +111,7 @@ export default function SchedulePage() {
             </div>
           </div>
           <Button type="submit">Save schedule & generate nights</Button>
-        </form>
+        </ToastForm>
 
         <section className="mt-8">
           <h2 className="font-display text-xl">Upcoming & recent</h2>

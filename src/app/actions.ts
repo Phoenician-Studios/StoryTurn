@@ -58,8 +58,9 @@ export async function addKidAction(formData: FormData) {
 }
 
 export async function createInviteAction() {
-  createInviteCode();
+  const code = createInviteCode();
   revalidatePath("/family");
+  return { code };
 }
 
 export async function saveScheduleAction(formData: FormData) {

@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { loginAction, switchDemoUserAction } from "@/app/actions";
+import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +35,12 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Demo mode is on. Use a sample account or any email.
           </p>
-          <form action={loginAction} className="mt-5 space-y-4">
+          <ToastForm
+            action={loginAction}
+            successMessage="Signed in"
+            redirects
+            className="mt-5 space-y-4"
+          >
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -59,7 +65,7 @@ export default function LoginPage() {
             <Button type="submit" className="w-full animate-glow">
               Continue
             </Button>
-          </form>
+          </ToastForm>
 
           <div className="mt-6 space-y-2">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -71,12 +77,17 @@ export default function LoginPage() {
                 ["jordan@example.com", "Jordan"],
                 ["nana@example.com", "Nana"],
               ].map(([email, label]) => (
-                <form key={email} action={switchDemoUserAction}>
+                <ToastForm
+                  key={email}
+                  action={switchDemoUserAction}
+                  successMessage={`Signed in as ${label}`}
+                  redirects
+                >
                   <input type="hidden" name="email" value={email} />
                   <Button type="submit" variant="secondary" size="sm">
                     {label}
                   </Button>
-                </form>
+                </ToastForm>
               ))}
             </div>
           </div>

@@ -2,15 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { addBookAction, searchBooksAction } from "@/app/actions";
+import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import type { BookSearchResult } from "@/lib/open-library";
 
 export function BookSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookSearchResult[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const toast = useToast();
 
   return (
     <div className="space-y-4">
@@ -25,13 +27,23 @@ export function BookSearch() {
           type="button"
           disabled={pending}
           onClick={() => {
-            setError(null);
             startTransition(async () => {
               try {
                 const next = await searchBooksAction(query);
                 setResults(next);
+                if (next.length === 0) {
+                  toast.message("No books matched that search");
+                } else {
+                  toast.success(
+                    next.length === 1
+                      ? "Found 1 book"
+                      : `Found ${next.length} books`,
+                  );
+                }
               } catch (err) {
-                setError(err instanceof Error ? err.message : "Search failed");
+                toast.error(
+                  err instanceof Error ? err.message : "Search failed",
+                );
               }
             });
           }}
@@ -39,7 +51,6 @@ export function BookSearch() {
           {pending ? "Searching…" : "Search Open Library"}
         </Button>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
       <ul className="space-y-3">
         {results.map((book) => (
           <li
@@ -67,7 +78,10 @@ export function BookSearch() {
                 </p>
               </div>
             </div>
-            <form action={addBookAction}>
+            <ToastForm
+              action={addBookAction}
+              successMessage={`Added "${book.title}" to the library`}
+            >
               <input type="hidden" name="title" value={book.title} />
               <input
                 type="hidden"
@@ -84,7 +98,7 @@ export function BookSearch() {
               <Button type="submit" size="sm" variant="secondary">
                 Add to library
               </Button>
-            </form>
+            </ToastForm>
           </li>
         ))}
       </ul>

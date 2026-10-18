@@ -1,8 +1,6 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ResetPasswordForm } from "@/components/reset-password-form";
 
 export default function ResetPasswordPage() {
   return (
@@ -14,15 +12,7 @@ export default function ResetPasswordPage() {
           With Supabase configured, this sends a recovery email. In demo mode it
           confirms the flow without sending mail.
         </p>
-        <form className="mt-5 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required />
-          </div>
-          <Button type="submit" className="w-full">
-            Send reset link
-          </Button>
-        </form>
+        <ResetPasswordForm />
         <p className="mt-4 text-sm text-muted-foreground">
           <Link href="/login" className="text-primary hover:underline">
             Back to sign in

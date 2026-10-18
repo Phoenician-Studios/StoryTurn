@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createFamilyAction, joinFamilyAction } from "@/app/actions";
+import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,15 +23,25 @@ export default function OnboardingPage() {
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <form action={createFamilyAction} className="story-panel animate-rise rounded-2xl p-5 space-y-4">
+        <ToastForm
+          action={createFamilyAction}
+          successMessage="Family created"
+          redirects
+          className="story-panel animate-rise space-y-4 rounded-2xl p-5"
+        >
           <h2 className="font-display text-xl">Create a family</h2>
           <div className="space-y-2">
             <Label htmlFor="name">Family name</Label>
             <Input id="name" name="name" placeholder="The Riveras" required />
           </div>
           <Button type="submit">Create family</Button>
-        </form>
-        <form action={joinFamilyAction} className="story-panel animate-rise-delay rounded-2xl p-5 space-y-4">
+        </ToastForm>
+        <ToastForm
+          action={joinFamilyAction}
+          successMessage="Joined family"
+          redirects
+          className="story-panel animate-rise-delay space-y-4 rounded-2xl p-5"
+        >
           <h2 className="font-display text-xl">Join with invite</h2>
           <div className="space-y-2">
             <Label htmlFor="code">Invite code</Label>
@@ -39,7 +50,7 @@ export default function OnboardingPage() {
           <Button type="submit" variant="secondary">
             Join family
           </Button>
-        </form>
+        </ToastForm>
       </div>
     </main>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logoutAction } from "@/app/actions";
+import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 
 const links = [
@@ -36,11 +37,15 @@ export function AppNav({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">{displayName}</span>
-          <form action={logoutAction}>
+          <ToastForm
+            action={logoutAction}
+            successMessage="Signed out"
+            redirects
+          >
             <Button type="submit" variant="outline" size="sm">
               Sign out
             </Button>
-          </form>
+          </ToastForm>
         </div>
       </div>
       <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 pb-3 sm:hidden">
