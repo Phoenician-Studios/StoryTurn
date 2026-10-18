@@ -28,7 +28,7 @@ import {
   setDemoSessionCookie,
 } from "@/lib/demo-session";
 import { clearPendingInvite, setPendingInvite } from "@/lib/pending-invite";
-import { searchOpenLibrary } from "@/lib/open-library";
+import { searchBooks } from "@/lib/book-search";
 import { isDemoMode } from "@/lib/config";
 
 function ensureDemo(): void {
@@ -163,7 +163,7 @@ export async function shuffleSessionBooksAction(formData: FormData) {
 }
 
 export async function searchBooksAction(query: string) {
-  return searchOpenLibrary(query, { limit: 8 });
+  return searchBooks(query, { limit: 8 });
 }
 
 export async function addBookAction(formData: FormData) {

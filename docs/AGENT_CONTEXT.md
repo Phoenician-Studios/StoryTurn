@@ -6,6 +6,7 @@ Project rules for StoryTurn / bedtime-readers agents. Prefer this file over chat
 
 - Demo store is the default until Supabase credentials exist.
 - Do not commit secrets.
+- Optional `GOOGLE_BOOKS_API_KEY` enables Google-first ISBN/barcode and title search; without it, library search uses Open Library only.
 
 ## Timezones for session calendar days
 

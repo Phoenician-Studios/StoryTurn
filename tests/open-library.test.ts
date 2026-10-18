@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { mapOpenLibraryDoc, searchOpenLibrary } from "@/lib/open-library";
+import {
+  lookupOpenLibraryByIsbn,
+  mapOpenLibraryDoc,
+  searchOpenLibrary,
+} from "@/lib/open-library";
 
 describe("mapOpenLibraryDoc", () => {
   it("maps cover and authors", () => {
@@ -14,6 +18,32 @@ describe("mapOpenLibraryDoc", () => {
     expect(mapped.coverUrl).toContain("123-M.jpg");
     expect(mapped.authors).toEqual(["Margaret Wise Brown"]);
     expect(mapped.isbn).toBe("9780060775858");
+    expect(mapped.source).toBe("openlibrary");
+    expect(mapped.sourceId).toBe("/works/OL1W");
+    expect(mapped.openLibraryKey).toBe("/works/OL1W");
+  });
+});
+
+describe("lookupOpenLibraryByIsbn", () => {
+  it("maps Books API entries", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        "ISBN:9780060775858": {
+          title: "Goodnight Moon",
+          authors: [{ name: "Margaret Wise Brown" }],
+          cover: { medium: "https://covers.example/m.jpg" },
+          key: "/books/OL1M",
+          publish_date: "1947",
+          identifiers: { isbn_13: ["9780060775858"] },
+        },
+      }),
+    });
+
+    const book = await lookupOpenLibraryByIsbn("9780060775858", { fetchImpl });
+    expect(book?.title).toBe("Goodnight Moon");
+    expect(book?.authors).toEqual(["Margaret Wise Brown"]);
+    expect(book?.year).toBe(1947);
   });
 });
 
