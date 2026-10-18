@@ -13,6 +13,12 @@ import {
   nextSessionForMember,
   sessionDateKey,
 } from "@/lib/domain/sessions";
+import {
+  bookCodeKey,
+  checkForDuplicate,
+  type BookInput,
+  type TitleDuplicateCandidate,
+} from "@/lib/domain/book-duplicates";
 import { computeDashboardStats } from "@/lib/domain/stats";
 import { parseBirthday } from "@/lib/domain/kids";
 import {
@@ -506,27 +512,71 @@ export function addKid(name: string, birthdayRaw: string): Kid {
   return kid;
 }
 
-export function addBookFromSearch(input: {
-  title: string;
-  authors: string[];
-  openLibraryKey: string | null;
-  coverUrl: string | null;
-  isbn: string | null;
-}): Book {
+export type AddBookResolution =
+  | { action: "keep_both" }
+  | { action: "replace"; existingBookId: string };
+
+export type AddBookResult =
+  | { status: "added"; book: Book }
+  | { status: "already_in_library"; existing: Book }
+  | {
+      status: "possible_duplicate";
+      incoming: BookInput;
+      candidates: TitleDuplicateCandidate[];
+    }
+  | { status: "replaced"; book: Book };
+
+/**
+ * Same barcode always keeps the earlier book. Same title (and author) asks the
+ * caller to resolve: keep both, or replace the existing book's metadata in
+ * place so sessions that reference it keep pointing at the same id.
+ */
+export function addBookFromSearch(
+  input: BookInput,
+  resolution?: AddBookResolution,
+): AddBookResult {
   const member = getCurrentMember();
   if (!member) throw new Error("Join a family first");
+  const title = input.title.trim();
+  if (!title) throw new Error("Book title is required");
+  const incoming: BookInput = {
+    ...input,
+    title,
+    isbn: bookCodeKey(input.isbn) ?? (input.isbn?.trim() || null),
+  };
+  const library = state().books.filter((b) => b.familyId === member.familyId);
+  const check = checkForDuplicate(library, incoming);
+
+  if (check.kind === "same_isbn") {
+    return { status: "already_in_library", existing: check.existing };
+  }
+
+  if (check.kind === "same_title") {
+    if (resolution?.action === "replace") {
+      const target = check.candidates.find(
+        (c) => c.existing.id === resolution.existingBookId,
+      )?.existing;
+      if (!target) throw new Error("That book is no longer a match in your library");
+      target.title = incoming.title;
+      target.authors = incoming.authors;
+      target.openLibraryKey = incoming.openLibraryKey;
+      target.coverUrl = incoming.coverUrl;
+      target.isbn = incoming.isbn;
+      return { status: "replaced", book: target };
+    }
+    if (resolution?.action !== "keep_both") {
+      return { status: "possible_duplicate", incoming, candidates: check.candidates };
+    }
+  }
+
   const book: Book = {
     id: id("book"),
     familyId: member.familyId,
-    title: input.title,
-    authors: input.authors,
-    openLibraryKey: input.openLibraryKey,
-    coverUrl: input.coverUrl,
-    isbn: input.isbn,
+    ...incoming,
     createdAt: new Date().toISOString(),
   };
   state().books.push(book);
-  return book;
+  return { status: "added", book };
 }
 
 export function ensureUpcomingSessions(daysAhead = 14): number {

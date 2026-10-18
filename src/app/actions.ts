@@ -21,6 +21,8 @@ import {
   swapSessionReaders,
   updateMemberRelation,
   updateSession,
+  type AddBookResolution,
+  type AddBookResult,
 } from "@/lib/demo/store";
 import { parseChildRelation } from "@/lib/domain/relations";
 import {
@@ -166,18 +168,37 @@ export async function searchBooksAction(query: string) {
   return searchBooks(query, { limit: 8 });
 }
 
-export async function addBookAction(formData: FormData) {
-  addBookFromSearch({
-    title: String(formData.get("title")),
-    authors: String(formData.get("authors") ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-    openLibraryKey: String(formData.get("openLibraryKey") || "") || null,
-    coverUrl: String(formData.get("coverUrl") || "") || null,
-    isbn: String(formData.get("isbn") || "") || null,
-  });
-  revalidatePath("/library");
+function parseAddBookResolution(formData: FormData): AddBookResolution | undefined {
+  const resolution = String(formData.get("resolution") ?? "");
+  if (resolution === "keep_both") return { action: "keep_both" };
+  if (resolution === "replace") {
+    const existingBookId = String(formData.get("existingBookId") ?? "");
+    if (!existingBookId) throw new Error("Pick which library book to replace");
+    return { action: "replace", existingBookId };
+  }
+  return undefined;
+}
+
+export async function addBookAction(formData: FormData): Promise<AddBookResult> {
+  const result = addBookFromSearch(
+    {
+      title: String(formData.get("title") ?? ""),
+      authors: String(formData.get("authors") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      openLibraryKey: String(formData.get("openLibraryKey") || "") || null,
+      coverUrl: String(formData.get("coverUrl") || "") || null,
+      isbn: String(formData.get("isbn") || "") || null,
+    },
+    parseAddBookResolution(formData),
+  );
+  if (result.status === "added" || result.status === "replaced") {
+    revalidatePath("/library");
+    revalidatePath("/schedule");
+    revalidatePath("/");
+  }
+  return result;
 }
 
 export async function cancelSessionAction(sessionId: string) {

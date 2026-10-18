@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  addBookFromSearch,
   addKid,
+  getLibrary,
   addRandomBooksToUpcomingSessions,
   cancelSession,
   cascadeInsertReader,
@@ -261,5 +263,99 @@ describe("demo store", () => {
     );
     expect(completed).toBeTruthy();
     expect(() => shuffleSessionBooks(completed!.id)).toThrow(/scheduled nights/);
+  });
+
+  describe("adding books with duplicate detection", () => {
+    const goodnightMoonNoCover = {
+      title: "Goodnight moon",
+      authors: ["Brown, Margaret Wise"],
+      openLibraryKey: null,
+      coverUrl: null,
+      isbn: "9780694003617",
+    };
+
+    it("keeps the earlier book when the barcode matches in another format", () => {
+      demoLogin("alex@example.com");
+      const before = getLibrary().length;
+      const result = addBookFromSearch({
+        title: "Goodnight Moon (Board Book)",
+        authors: [],
+        openLibraryKey: null,
+        coverUrl: null,
+        isbn: "0-06-077585-8",
+      });
+      expect(result).toMatchObject({
+        status: "already_in_library",
+        existing: { id: "book_moon" },
+      });
+      expect(getLibrary()).toHaveLength(before);
+    });
+
+    it("asks before adding a same-title book with a different barcode", () => {
+      demoLogin("alex@example.com");
+      const before = getLibrary().length;
+      const result = addBookFromSearch(goodnightMoonNoCover);
+      expect(result.status).toBe("possible_duplicate");
+      if (result.status !== "possible_duplicate") return;
+      expect(result.candidates).toEqual([
+        expect.objectContaining({
+          existing: expect.objectContaining({ id: "book_moon" }),
+          recommended: "existing",
+        }),
+      ]);
+      expect(getLibrary()).toHaveLength(before);
+    });
+
+    it("adds a second copy when the user keeps both", () => {
+      demoLogin("alex@example.com");
+      const before = getLibrary().length;
+      const result = addBookFromSearch(goodnightMoonNoCover, { action: "keep_both" });
+      expect(result.status).toBe("added");
+      expect(getLibrary()).toHaveLength(before + 1);
+    });
+
+    it("replaces the existing book in place so session links survive", () => {
+      demoLogin("alex@example.com");
+      const linked = getDemoState().sessionBooks.filter((b) => b.bookId === "book_moon");
+      const before = getLibrary().length;
+      const result = addBookFromSearch(
+        { ...goodnightMoonNoCover, coverUrl: "https://example.com/new.jpg" },
+        { action: "replace", existingBookId: "book_moon" },
+      );
+      expect(result).toMatchObject({
+        status: "replaced",
+        book: {
+          id: "book_moon",
+          isbn: "9780694003617",
+          coverUrl: "https://example.com/new.jpg",
+        },
+      });
+      expect(getLibrary()).toHaveLength(before);
+      expect(getDemoState().sessionBooks.filter((b) => b.bookId === "book_moon")).toEqual(
+        linked,
+      );
+    });
+
+    it("rejects replacing a book that is not a duplicate match", () => {
+      demoLogin("alex@example.com");
+      expect(() =>
+        addBookFromSearch(goodnightMoonNoCover, {
+          action: "replace",
+          existingBookId: "book_hungry",
+        }),
+      ).toThrow(/no longer a match/);
+    });
+
+    it("stores scanned ISBN-10 as ISBN-13", () => {
+      demoLogin("alex@example.com");
+      const result = addBookFromSearch({
+        title: "The Catcher in the Rye",
+        authors: ["J. D. Salinger"],
+        openLibraryKey: null,
+        coverUrl: null,
+        isbn: "0316769487",
+      });
+      expect(result).toMatchObject({ status: "added", book: { isbn: "9780316769488" } });
+    });
   });
 });
