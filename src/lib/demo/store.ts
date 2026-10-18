@@ -48,8 +48,10 @@ export function getDemoState(): AppState {
 }
 
 export function getDemoSessionUserId(): string | null {
+  // Do not default to the seeded Alex user. Anonymous browsers (invite links)
+  // must stay signed out until they explicitly sign in. Tests call resetDemoStore().
   if (globalForDemo.__storyTurnSessionUserId === undefined) {
-    globalForDemo.__storyTurnSessionUserId = "user_alex";
+    globalForDemo.__storyTurnSessionUserId = null;
   }
   return globalForDemo.__storyTurnSessionUserId;
 }
@@ -127,17 +129,14 @@ export function createFamily(name: string): void {
   });
 }
 
-export function joinFamily(codeRaw: string): void {
-  const user = getCurrentUser();
-  if (!user) throw new Error("Not signed in");
-  if (getCurrentMember()) throw new Error("Already in a family");
-
+export function findInviteByCode(codeRaw: string) {
   const code = normalizeInviteCode(codeRaw);
+  if (!code) return null;
   const invite = state().invites.find(
     (i) => normalizeInviteCode(i.code) === code,
   );
-  if (!invite) throw new Error("Invalid invite code");
-
+  if (!invite) return null;
+  const family = state().families.find((f) => f.id === invite.familyId) ?? null;
   const usable = isInviteUsable({
     code,
     expectedCode: invite.code,
@@ -145,12 +144,22 @@ export function joinFamily(codeRaw: string): void {
     maxUses: invite.maxUses,
     expiresAt: invite.expiresAt,
   });
-  if (!usable.ok) throw new Error(usable.reason);
+  return { invite, family, usable, code };
+}
 
-  invite.uses += 1;
+export function joinFamily(codeRaw: string): void {
+  const user = getCurrentUser();
+  if (!user) throw new Error("Not signed in");
+  if (getCurrentMember()) throw new Error("Already in a family");
+
+  const matched = findInviteByCode(codeRaw);
+  if (!matched) throw new Error("Invalid invite code");
+  if (!matched.usable.ok) throw new Error(matched.usable.reason);
+
+  matched.invite.uses += 1;
   state().members.push({
     id: id("mem"),
-    familyId: invite.familyId,
+    familyId: matched.invite.familyId,
     userId: user.id,
     displayName: user.displayName,
     email: user.email,

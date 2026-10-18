@@ -3,6 +3,8 @@
 import { createInviteAction } from "@/app/actions";
 import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
+import { appUrl } from "@/lib/config";
+import { invitePath } from "@/lib/domain/invites";
 
 export function CreateInviteForm() {
   return (
@@ -17,8 +19,11 @@ export function CreateInviteForm() {
             ? (result as { code: string }).code
             : null;
         return code
-          ? { title: "Invite code created", description: code }
-          : "Invite code created";
+          ? {
+              title: "Invite link ready",
+              description: `${appUrl()}${invitePath(code)}`,
+            }
+          : "Invite link ready";
       }}
     >
       <Button type="submit" variant="secondary">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { acceptPendingInviteForCurrentUser } from "@/lib/accept-pending-invite";
 import {
   addBookFromSearch,
   addKid,
@@ -10,10 +11,16 @@ import {
   createInviteCode,
   demoLogin,
   demoLogout,
+  getCurrentMember,
   joinFamily,
   saveSchedule,
   updateSession,
 } from "@/lib/demo/store";
+import {
+  clearDemoSessionCookie,
+  setDemoSessionCookie,
+} from "@/lib/demo-session";
+import { clearPendingInvite, setPendingInvite } from "@/lib/pending-invite";
 import { searchOpenLibrary } from "@/lib/open-library";
 import { isDemoMode } from "@/lib/config";
 
@@ -30,12 +37,23 @@ export async function loginAction(formData: FormData) {
   if (!email.includes("@")) {
     throw new Error("Enter a valid email");
   }
-  demoLogin(email);
-  redirect("/");
+  const inviteFromForm = String(formData.get("invite") ?? "").trim();
+  if (inviteFromForm) {
+    await setPendingInvite(inviteFromForm);
+  }
+  const user = demoLogin(email);
+  await setDemoSessionCookie(user.id);
+  const accepted = await acceptPendingInviteForCurrentUser();
+  revalidatePath("/");
+  if (getCurrentMember()) {
+    redirect(accepted.status === "joined" ? "/invite/consumed" : "/");
+  }
+  redirect("/onboarding");
 }
 
 export async function logoutAction() {
   demoLogout();
+  await clearDemoSessionCookie();
   redirect("/login");
 }
 
@@ -47,6 +65,7 @@ export async function createFamilyAction(formData: FormData) {
 
 export async function joinFamilyAction(formData: FormData) {
   joinFamily(String(formData.get("code") ?? ""));
+  await clearPendingInvite();
   revalidatePath("/");
   redirect("/");
 }
@@ -122,7 +141,12 @@ export async function updateSessionAction(formData: FormData) {
 }
 
 export async function switchDemoUserAction(formData: FormData) {
-  demoLogin(String(formData.get("email") ?? "alex@example.com"));
+  const user = demoLogin(String(formData.get("email") ?? "alex@example.com"));
+  await setDemoSessionCookie(user.id);
+  const accepted = await acceptPendingInviteForCurrentUser();
   revalidatePath("/");
-  redirect("/");
+  if (getCurrentMember()) {
+    redirect(accepted.status === "joined" ? "/invite/consumed" : "/");
+  }
+  redirect("/onboarding");
 }

@@ -4,6 +4,10 @@ export function normalizeInviteCode(raw: string): string {
   return raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
+export function invitePath(code: string): string {
+  return `/invite/${normalizeInviteCode(code)}`;
+}
+
 export function generateInviteCode(length = 8, random = Math.random): string {
   if (length < 6 || length > 16) {
     throw new Error("Invite code length must be between 6 and 16");

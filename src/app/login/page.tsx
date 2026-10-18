@@ -1,16 +1,45 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { loginAction, switchDemoUserAction } from "@/app/actions";
 import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getCurrentUser } from "@/lib/demo/store";
-import { redirect } from "next/navigation";
+import {
+  findInviteByCode,
+  getCurrentMember,
+  getCurrentUser,
+  joinFamily,
+} from "@/lib/demo/store";
+import { normalizeInviteCode } from "@/lib/domain/invites";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>;
+}) {
+  const params = await searchParams;
+  const inviteCode = params.invite
+    ? normalizeInviteCode(params.invite)
+    : null;
+  const matched = inviteCode ? findInviteByCode(inviteCode) : null;
+  const usableInvite =
+    matched?.usable.ok ? matched.code : null;
+  const familyName =
+    matched?.usable.ok ? (matched.family?.name ?? null) : null;
+
   const user = getCurrentUser();
-  if (user) redirect("/");
+  if (user) {
+    if (usableInvite && !getCurrentMember()) {
+      try {
+        joinFamily(usableInvite);
+      } catch {
+        redirect("/onboarding");
+      }
+    }
+    redirect(getCurrentMember() ? "/" : "/onboarding");
+  }
 
   return (
     <main className="relative mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col justify-center px-4 py-12">
@@ -33,7 +62,9 @@ export default function LoginPage() {
         <section className="story-panel animate-rise-delay rounded-2xl p-6">
           <h2 className="font-display text-2xl text-foreground">Sign in</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Demo mode is on. Use a sample account or any email.
+            {familyName
+              ? `Sign in to join ${familyName}. You'll skip the invite code step.`
+              : "Demo mode is on. Use a sample account or any email."}
           </p>
           <ToastForm
             action={loginAction}
@@ -41,6 +72,9 @@ export default function LoginPage() {
             redirects
             className="mt-5 space-y-4"
           >
+            {usableInvite ? (
+              <input type="hidden" name="invite" value={usableInvite} />
+            ) : null}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -49,7 +83,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 placeholder="alex@example.com"
-                defaultValue="alex@example.com"
+                defaultValue={familyName ? "" : "alex@example.com"}
               />
             </div>
             <div className="space-y-2">
@@ -59,7 +93,7 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 placeholder="demo"
-                defaultValue="demo"
+                defaultValue={familyName ? "" : "demo"}
               />
             </div>
             <Button type="submit" className="w-full animate-glow">
@@ -67,35 +101,44 @@ export default function LoginPage() {
             </Button>
           </ToastForm>
 
-          <div className="mt-6 space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Quick demo users
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                ["alex@example.com", "Alex"],
-                ["jordan@example.com", "Jordan"],
-                ["nana@example.com", "Nana"],
-              ].map(([email, label]) => (
-                <ToastForm
-                  key={email}
-                  action={switchDemoUserAction}
-                  successMessage={`Signed in as ${label}`}
-                  redirects
-                >
-                  <input type="hidden" name="email" value={email} />
-                  <Button type="submit" variant="secondary" size="sm">
-                    {label}
-                  </Button>
-                </ToastForm>
-              ))}
+          {!familyName && (
+            <div className="mt-6 space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Quick demo users
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ["alex@example.com", "Alex"],
+                  ["jordan@example.com", "Jordan"],
+                  ["nana@example.com", "Nana"],
+                ].map(([email, label]) => (
+                  <ToastForm
+                    key={email}
+                    action={switchDemoUserAction}
+                    successMessage={`Signed in as ${label}`}
+                    redirects
+                  >
+                    <input type="hidden" name="email" value={email} />
+                    <Button type="submit" variant="secondary" size="sm">
+                      {label}
+                    </Button>
+                  </ToastForm>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <p className="mt-6 text-sm text-muted-foreground">
             Password reset and Google sign-in wire up through Supabase Auth when
             env vars are configured.{" "}
-            <Link href="/signup" className="text-primary underline-offset-2 hover:underline">
+            <Link
+              href={
+                usableInvite
+                  ? `/signup?invite=${encodeURIComponent(usableInvite)}`
+                  : "/signup"
+              }
+              className="text-primary underline-offset-2 hover:underline"
+            >
               Create account
             </Link>
           </p>

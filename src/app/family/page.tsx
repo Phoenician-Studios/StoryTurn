@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { addKidAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
+import { CopyInviteLinkButton } from "@/components/copy-invite-link-button";
 import { CreateInviteForm } from "@/components/create-invite-form";
 import { ToastForm } from "@/components/toast-form";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,8 @@ import {
   getCurrentUser,
   getFamilyAdmin,
 } from "@/lib/demo/store";
+import { invitePath } from "@/lib/domain/invites";
+import { appUrl } from "@/lib/config";
 
 export default function FamilyPage() {
   const user = getCurrentUser();
@@ -93,26 +96,40 @@ export default function FamilyPage() {
             <div>
               <h2 className="font-display text-xl">Invite codes</h2>
               <p className="text-sm text-muted-foreground">
-                Share a code so another adult can join as a reader.
+                Share an invite link. New readers join the family right after
+                sign up.
               </p>
             </div>
             <CreateInviteForm />
           </div>
           <ul className="mt-4 space-y-2">
-            {admin.invites.map((invite) => (
-              <li
-                key={invite.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
-              >
-                <code className="font-mono text-sm tracking-wider">
-                  {invite.code}
-                </code>
-                <span className="text-sm text-muted-foreground">
-                  {invite.uses}
-                  {invite.maxUses !== null ? ` / ${invite.maxUses}` : ""} uses
-                </span>
-              </li>
-            ))}
+            {admin.invites.map((invite) => {
+              const path = invitePath(invite.code);
+              const href = `${appUrl()}${path}`;
+              return (
+                <li
+                  key={invite.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <code className="font-mono text-sm tracking-wider">
+                      {invite.code}
+                    </code>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {href}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {invite.uses}
+                      {invite.maxUses !== null ? ` / ${invite.maxUses}` : ""}{" "}
+                      uses
+                    </span>
+                    <CopyInviteLinkButton code={invite.code} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </section>
       </main>

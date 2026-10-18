@@ -5,12 +5,44 @@ import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getCurrentMember, getCurrentUser } from "@/lib/demo/store";
+import {
+  findInviteByCode,
+  getCurrentMember,
+  getCurrentUser,
+  joinFamily,
+} from "@/lib/demo/store";
+import { normalizeInviteCode } from "@/lib/domain/invites";
+import { peekPendingInvite } from "@/lib/pending-invite";
 
-export default function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>;
+}) {
   const user = getCurrentUser();
   if (!user) redirect("/login");
   if (getCurrentMember()) redirect("/");
+
+  const params = await searchParams;
+  const fromQuery = params.invite
+    ? normalizeInviteCode(params.invite)
+    : null;
+  // Cookie is readable in RSC; joining uses the code directly (no cookie writes here).
+  const pendingCode = fromQuery ?? (await peekPendingInvite());
+
+  if (pendingCode) {
+    try {
+      joinFamily(pendingCode);
+      // Clear the pending-invite cookie via a route handler (RSC cannot mutate cookies).
+      redirect("/invite/consumed");
+    } catch {
+      // Fall through to the manual join form.
+    }
+  }
+
+  const matched = pendingCode ? findInviteByCode(pendingCode) : null;
+  const defaultCode =
+    matched?.usable.ok ? matched.code : (pendingCode ?? "");
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-12">
@@ -45,7 +77,13 @@ export default function OnboardingPage() {
           <h2 className="font-display text-xl">Join with invite</h2>
           <div className="space-y-2">
             <Label htmlFor="code">Invite code</Label>
-            <Input id="code" name="code" placeholder="RIVERA24" required />
+            <Input
+              id="code"
+              name="code"
+              placeholder="RIVERA24"
+              required
+              defaultValue={defaultCode}
+            />
           </div>
           <Button type="submit" variant="secondary">
             Join family
