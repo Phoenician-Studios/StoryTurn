@@ -24,7 +24,9 @@ Stop the family library from collecting duplicate copies of the same book when i
 
 | Helper | Rule |
 |--------|------|
-| `bookCodeKey` | `normalizeToIsbn13`; otherwise the compact code when it looks like a barcode (non-Bookland UPC); otherwise null (provider ids such as `UOM:...` never match) |
+| `bookCodeKey` | `normalizeToIsbn13`; otherwise the compact code when it looks like a barcode (non-Bookland UPC); otherwise null |
+| `storedIsbnKey` | `bookCodeKey`, else the trimmed raw value; used for storage and exact matching so it agrees with the unique index |
+| `mergeKeptBook` | On replace, keep the chosen copy's fields and fill gaps (ISBN, cover, authors, Open Library key) from the other |
 | `normalizeTitleKey` | Drop subtitle after `:` and `(...)` / `[...]` editions, fold accents, lowercase, `&` → `and`, strip punctuation, drop a leading `the` / `a` / `an` |
 | `isLikelySameBook` | Title keys equal **and** (an author matches by token subset, or either side has no authors) |
 | `bookMetadataScore` | cover 8, valid barcode 4, authors 2, Open Library key 1 |
@@ -34,8 +36,8 @@ Barcode match is checked first and always wins over the title prompt.
 ### Store / action
 
 - [`addBookFromSearch(input, resolution?)`](../../src/lib/demo/store.ts) returns `added` / `already_in_library` / `possible_duplicate` / `replaced`.
-- New books store `isbn` as `bookCodeKey` when available, so one barcode has one stored value.
-- **Replace** overwrites the existing row's metadata in place (same id, same `createdAt`). `session_books.book_id` has no `on delete cascade`, so keeping the id avoids repointing session links and avoids a delete path the app does not have yet.
+- New books store `isbn` as `storedIsbnKey`, so one barcode has one stored value.
+- **Replace** overwrites the existing row's metadata in place (via `mergeKeptBook`) (same id, same `createdAt`). `session_books.book_id` has no `on delete cascade`, so keeping the id avoids repointing session links and avoids a delete path the app does not have yet.
 - [`addBookAction`](../../src/app/actions.ts) reads `resolution` (`keep_both` | `replace`) and `existingBookId` from the form data. "Keep existing" is client-only (no write).
 
 ### UX ([`src/components/book-search.tsx`](../../src/components/book-search.tsx))
@@ -44,7 +46,7 @@ Dialog with an "In your library" card and a "Just found" card per candidate (cov
 
 ### Data
 
-[`supabase/migrations/004_books_unique_isbn.sql`](../../supabase/migrations/004_books_unique_isbn.sql) adds a partial unique index on `(family_id, isbn)`. Books are not written to Supabase yet (demo store only), so no existing rows can conflict. Rows written by a future Supabase path must normalize `isbn` with `bookCodeKey` first.
+[`supabase/migrations/004_books_unique_isbn.sql`](../../supabase/migrations/004_books_unique_isbn.sql) adds a partial unique index on `(family_id, isbn)`. Books are not written to Supabase yet (demo store only), so no existing rows can conflict. Rows written by a future Supabase path must normalize `isbn` with `storedIsbnKey` first.
 
 ## Acceptance
 
@@ -54,5 +56,5 @@ Dialog with an "In your library" card and a "Just found" card per candidate (cov
 ## Handoff
 
 - Done: matching helpers, store + action, dialog, migration, tests; manually verified in the browser.
-- Next: when the Supabase data path lands, apply `bookCodeKey` before inserts and do the duplicate check in the same transaction as the insert.
+- Next: when the Supabase data path lands, apply `storedIsbnKey` before inserts and do the duplicate check in the same transaction as the insert.
 - Later: library delete / merge UI for duplicates that already exist.

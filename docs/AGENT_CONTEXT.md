@@ -27,6 +27,6 @@ Session `scheduledFor` values are **family-local wall times** (date + bedtime), 
 
 ## Library duplicates
 
-- Compare and store book barcodes via `bookCodeKey` (`src/lib/domain/book-duplicates.ts`), never raw `isbn` strings: ISBN-10, ISBN-13, and UPC forms of one book must collide.
+- Compare and store book barcodes via `storedIsbnKey` (`src/lib/domain/book-duplicates.ts`), never raw `isbn` strings: ISBN-10, ISBN-13, and UPC forms of one book must collide.
 - Same barcode in a family keeps the earlier book (no prompt). Same title + author with a different barcode prompts the user; recommend the copy with more metadata (cover first), ties keep the existing book.
-- "Replace" updates the existing row in place so `session_books` links keep their `book_id`.
+- "Replace" updates the existing row in place so `session_books` links keep their `book_id`, filling any field the new copy lacks from the existing book.
