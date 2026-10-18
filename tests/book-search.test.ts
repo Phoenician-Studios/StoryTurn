@@ -124,6 +124,26 @@ describe("searchBooks routing", () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("isbn%3A");
   });
 
+  it("backfills the scanned ISBN when Google omits industryIdentifiers", async () => {
+    process.env.GOOGLE_BOOKS_API_KEY = "test-key";
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            id: "g-no-isbn",
+            volumeInfo: { title: "Missing Identifiers", authors: ["Z"] },
+          },
+        ],
+      }),
+    });
+
+    const book = await lookupBookByCode("978-0-06-077585-8", { fetchImpl });
+    expect(book?.source).toBe("google");
+    expect(book?.title).toBe("Missing Identifiers");
+    expect(book?.isbn).toBe("9780060775858");
+  });
+
   it("uses Open Library text search without a Google key", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,

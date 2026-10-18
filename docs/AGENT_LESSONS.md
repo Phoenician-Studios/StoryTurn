@@ -27,3 +27,11 @@ Durable lessons from PR review and production misses. `/start` loads `AGENT_CONT
 - **Going forward:** Book-shuffle / convenience mutators only target future `scheduled` nights; past edits go through `updateSession` + correction reason.
 - **Pointers:** `shuffleSessionBooks`, session detail shuffle CTA
 - **Promoted:** AGENT_CONTEXT.md → Corrections vs silent edits
+
+### 2026-10-18 — Preserve scanned ISBN on Google Books hits
+
+- **Source:** PR #6 · Bugbot
+- **Gap:** `lookupBookByCode` returned Google volumes even when `industryIdentifiers` was missing, so `addBookAction` saved books without the ISBN the user just scanned.
+- **Going forward:** On code/barcode lookup success, if the provider omits ISBN, backfill from the normalized query ISBN (same as Open Library’s ISBN mapper).
+- **Pointers:** `src/lib/book-search.ts` `lookupBookByCode`
+- **Promoted:** AGENT_CONTEXT.md → ISBN / barcode lookup

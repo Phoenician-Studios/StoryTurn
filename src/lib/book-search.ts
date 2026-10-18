@@ -50,7 +50,12 @@ export async function lookupBookByCode(
         fetchImpl,
         apiKey: resolveGoogleKey(options),
       });
-      if (google[0]) return google[0];
+      if (google[0]) {
+        // Google volumes sometimes omit industryIdentifiers; keep the scanned code.
+        return google[0].isbn
+          ? google[0]
+          : { ...google[0], isbn };
+      }
     } catch {
       // Fall through to Open Library.
     }
