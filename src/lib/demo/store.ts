@@ -1,7 +1,13 @@
+import {
+  buildCascadePlan,
+  orderedFutureScheduledNights,
+  planSwapNights,
+} from "@/lib/domain/cascade";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
 import { generateInviteCode, isInviteUsable, normalizeInviteCode } from "@/lib/domain/invites";
 import {
   assertTransition,
+  buildIcsUid,
   generateSessionsFromSchedule,
   isPastSession,
   nextSessionForMember,
@@ -9,6 +15,8 @@ import {
 } from "@/lib/domain/sessions";
 import { computeDashboardStats } from "@/lib/domain/stats";
 import { parseBirthday } from "@/lib/domain/kids";
+import { DEFAULT_FAMILY_TIMEZONE } from "@/lib/domain/dates";
+import { parseChildRelation, type ChildRelation } from "@/lib/domain/relations";
 import { addDays, formatDateOnly } from "@/lib/domain/rotation";
 import { createSeedState } from "@/lib/demo/seed";
 import { buildReadingInviteIcs, readingInviteSubject } from "@/lib/ics";
@@ -96,7 +104,10 @@ export function demoLogout(): void {
   setDemoSessionUserId(null);
 }
 
-export function createFamily(name: string): void {
+export function createFamily(
+  name: string,
+  relationToChildren: ChildRelation = "parent",
+): void {
   const user = getCurrentUser();
   if (!user) throw new Error("Not signed in");
   if (getCurrentMember()) throw new Error("Already in a family");
@@ -116,6 +127,7 @@ export function createFamily(name: string): void {
     displayName: user.displayName,
     email: user.email,
     role: "owner",
+    relationToChildren: parseChildRelation(relationToChildren, "parent"),
     createdAt: now,
   });
   state().invites.push({
@@ -148,7 +160,10 @@ export function findInviteByCode(codeRaw: string) {
   return { invite, family, usable, code };
 }
 
-export function joinFamily(codeRaw: string): void {
+export function joinFamily(
+  codeRaw: string,
+  relationToChildren: ChildRelation = "other",
+): void {
   const user = getCurrentUser();
   if (!user) throw new Error("Not signed in");
   if (getCurrentMember()) throw new Error("Already in a family");
@@ -165,8 +180,151 @@ export function joinFamily(codeRaw: string): void {
     displayName: user.displayName,
     email: user.email,
     role: "reader",
+    relationToChildren: parseChildRelation(relationToChildren, "other"),
     createdAt: new Date().toISOString(),
   });
+}
+
+function requireOwner(): FamilyMember {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  if (member.role !== "owner") {
+    throw new Error("Only family admins can do that");
+  }
+  return member;
+}
+
+export function updateMemberRelation(
+  memberId: string,
+  relationToChildren: ChildRelation,
+): void {
+  const actor = requireOwner();
+  const target = state().members.find(
+    (m) => m.id === memberId && m.familyId === actor.familyId,
+  );
+  if (!target) throw new Error("Member not found");
+  target.relationToChildren = parseChildRelation(relationToChildren);
+}
+
+/**
+ * Insert a fill-in reader on a future night and shift later nights forward.
+ * Owner-only. Example: Nana covers tonight → wife moves to tomorrow, etc.
+ */
+export async function cascadeInsertReader(input: {
+  fromSessionId: string;
+  fillInMemberId: string;
+}): Promise<{ changedSessionIds: string[]; extraSessionId: string }> {
+  const actor = requireOwner();
+  const fillIn = state().members.find(
+    (m) => m.id === input.fillInMemberId && m.familyId === actor.familyId,
+  );
+  if (!fillIn) throw new Error("Fill-in reader must be in your family");
+
+  const familySessions = state().sessions.filter(
+    (s) => s.familyId === actor.familyId,
+  );
+  const nights = orderedFutureScheduledNights({
+    sessions: familySessions,
+    assignments: state().assignments,
+    fromSessionId: input.fromSessionId,
+  });
+
+  const plan = buildCascadePlan({
+    nights,
+    fillInMemberId: input.fillInMemberId,
+    allFamilySessionDates: familySessions.map((s) =>
+      sessionDateKey(s.scheduledFor),
+    ),
+  });
+
+  const schedule = state().schedules.find(
+    (s) => s.familyId === actor.familyId && s.active,
+  );
+  if (!schedule) throw new Error("Save a schedule before cascading");
+
+  for (const step of plan.reassignments) {
+    state().assignments = applyReassignment({
+      existing: state().assignments,
+      sessionId: step.sessionId,
+      newMemberIds: [step.memberId],
+    });
+    await sendSessionInvite(step.sessionId, "REQUEST");
+  }
+
+  const extraSessionId = id("ses");
+  const extra: ReadingSession = {
+    id: extraSessionId,
+    familyId: actor.familyId,
+    scheduleId: schedule.id,
+    scheduledFor: `${plan.extraNightDate}T${schedule.timeLocal}:00`,
+    status: "scheduled",
+    notes: null,
+    icsUid: buildIcsUid(actor.familyId, plan.extraNightDate),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  state().sessions.push(extra);
+  state().assignments = applyReassignment({
+    existing: state().assignments,
+    sessionId: extraSessionId,
+    newMemberIds: [plan.extraNightMemberId],
+  });
+  await sendSessionInvite(extraSessionId, "REQUEST");
+
+  return {
+    changedSessionIds: plan.reassignments.map((r) => r.sessionId),
+    extraSessionId,
+  };
+}
+
+/**
+ * Swap current readers between two future scheduled nights. Owner-only.
+ */
+export async function swapSessionReaders(input: {
+  sessionAId: string;
+  sessionBId: string;
+}): Promise<void> {
+  const actor = requireOwner();
+  const familySessions = state().sessions.filter(
+    (s) => s.familyId === actor.familyId,
+  );
+  const a = familySessions.find((s) => s.id === input.sessionAId);
+  const b = familySessions.find((s) => s.id === input.sessionBId);
+  if (!a || !b) throw new Error("Both nights must belong to your family");
+  if (a.status !== "scheduled" || b.status !== "scheduled") {
+    throw new Error("Only scheduled nights can be swapped");
+  }
+  const nowDay = formatDateOnly(new Date());
+  if (
+    sessionDateKey(a.scheduledFor) < nowDay ||
+    sessionDateKey(b.scheduledFor) < nowDay
+  ) {
+    throw new Error("Cannot swap past nights");
+  }
+
+  const readerOf = (sessionId: string) => {
+    const current = state().assignments.find(
+      (asg) => asg.sessionId === sessionId && asg.isCurrent,
+    );
+    if (!current) throw new Error("Night is missing a reader");
+    return current.memberId;
+  };
+
+  const swaps = planSwapNights({
+    sessionAId: a.id,
+    sessionBId: b.id,
+    readerAId: readerOf(a.id),
+    readerBId: readerOf(b.id),
+  });
+
+  for (const step of swaps) {
+    state().assignments = applyReassignment({
+      existing: state().assignments,
+      sessionId: step.sessionId,
+      newMemberIds: [step.memberId],
+    });
+    await sendSessionInvite(step.sessionId, "REQUEST");
+  }
 }
 
 export function addKid(name: string, birthdayRaw: string): Kid {
@@ -377,7 +535,7 @@ export function listFamilySessions() {
   if (!member) return [];
   return state()
     .sessions.filter((s) => s.familyId === member.familyId)
-    .sort((a, b) => b.scheduledFor.localeCompare(a.scheduledFor));
+    .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
 }
 
 export function getSessionDetail(sessionId: string) {
@@ -544,6 +702,16 @@ export function getFamilyAdmin() {
       (s) => s.familyId === member.familyId && s.active,
     ),
   };
+}
+
+/** Active schedule timezone for the current member's family (display/compare days). */
+export function getFamilyTimezone(): string {
+  const member = getCurrentMember();
+  if (!member) return DEFAULT_FAMILY_TIMEZONE;
+  return (
+    state().schedules.find((s) => s.familyId === member.familyId && s.active)
+      ?.timezone ?? DEFAULT_FAMILY_TIMEZONE
+  );
 }
 
 export function createInviteCode(): string {

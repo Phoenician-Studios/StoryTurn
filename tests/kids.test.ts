@@ -13,7 +13,7 @@ describe("kids birthdays", () => {
   });
 
   it("formats a readable birthday label in UTC", () => {
-    expect(formatBirthdayLabel("2022-08-04")).toBe("Aug 4, 2022");
+    expect(formatBirthdayLabel("2022-08-04")).toBe("Aug 4");
   });
 
   it("rejects future and invalid birthdays", () => {

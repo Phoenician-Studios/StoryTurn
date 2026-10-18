@@ -7,6 +7,7 @@ import {
   addBookFromSearch,
   addKid,
   cancelSession,
+  cascadeInsertReader,
   createFamily,
   createInviteCode,
   demoLogin,
@@ -14,8 +15,11 @@ import {
   getCurrentMember,
   joinFamily,
   saveSchedule,
+  swapSessionReaders,
+  updateMemberRelation,
   updateSession,
 } from "@/lib/demo/store";
+import { parseChildRelation } from "@/lib/domain/relations";
 import {
   clearDemoSessionCookie,
   setDemoSessionCookie,
@@ -58,16 +62,49 @@ export async function logoutAction() {
 }
 
 export async function createFamilyAction(formData: FormData) {
-  createFamily(String(formData.get("name") ?? "Our family"));
+  createFamily(
+    String(formData.get("name") ?? "Our family"),
+    parseChildRelation(formData.get("relationToChildren"), "parent"),
+  );
   revalidatePath("/");
   redirect("/");
 }
 
 export async function joinFamilyAction(formData: FormData) {
-  joinFamily(String(formData.get("code") ?? ""));
+  joinFamily(
+    String(formData.get("code") ?? ""),
+    parseChildRelation(formData.get("relationToChildren"), "other"),
+  );
   await clearPendingInvite();
   revalidatePath("/");
   redirect("/");
+}
+
+export async function updateMemberRelationAction(formData: FormData) {
+  updateMemberRelation(
+    String(formData.get("memberId") ?? ""),
+    parseChildRelation(formData.get("relationToChildren")),
+  );
+  revalidatePath("/family");
+  revalidatePath("/schedule");
+}
+
+export async function cascadeInsertAction(formData: FormData) {
+  await cascadeInsertReader({
+    fromSessionId: String(formData.get("fromSessionId") ?? ""),
+    fillInMemberId: String(formData.get("fillInMemberId") ?? ""),
+  });
+  revalidatePath("/schedule");
+  revalidatePath("/");
+}
+
+export async function swapSessionsAction(formData: FormData) {
+  await swapSessionReaders({
+    sessionAId: String(formData.get("sessionAId") ?? ""),
+    sessionBId: String(formData.get("sessionBId") ?? ""),
+  });
+  revalidatePath("/schedule");
+  revalidatePath("/");
 }
 
 export async function addKidAction(formData: FormData) {

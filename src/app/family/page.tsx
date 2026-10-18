@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import { addKidAction } from "@/app/actions";
+import { addKidAction, updateMemberRelationAction } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { CopyInviteLinkButton } from "@/components/copy-invite-link-button";
 import { CreateInviteForm } from "@/components/create-invite-form";
+import { RelationSelect } from "@/components/relation-select";
 import { ToastForm } from "@/components/toast-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
   ageFromBirthday,
   formatBirthdayLabel,
 } from "@/lib/domain/kids";
+import { childRelationLabel } from "@/lib/domain/relations";
 import { invitePath } from "@/lib/domain/invites";
 import { appUrl } from "@/lib/config";
 
@@ -28,6 +30,7 @@ export default function FamilyPage() {
   if (!member) redirect("/onboarding");
   const admin = getFamilyAdmin();
   if (!admin) redirect("/onboarding");
+  const isOwner = member.role === "owner";
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -44,17 +47,44 @@ export default function FamilyPage() {
         <div className="mt-6 grid gap-6 md:grid-cols-2">
           <section className="story-panel rounded-2xl p-5 animate-rise-delay">
             <h2 className="font-display text-xl">Readers</h2>
-            <ul className="mt-4 space-y-2">
+            <ul className="mt-4 space-y-3">
               {admin.readers.map((reader) => (
                 <li
                   key={reader.id}
-                  className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2"
+                  className="rounded-lg bg-secondary/50 px-3 py-3"
                 >
-                  <div>
-                    <p className="font-medium">{reader.displayName}</p>
-                    <p className="text-sm text-muted-foreground">{reader.email}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{reader.displayName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {reader.email}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {childRelationLabel(reader.relationToChildren)} to the
+                        kids
+                      </p>
+                    </div>
+                    <Badge variant="outline">{reader.role}</Badge>
                   </div>
-                  <Badge variant="outline">{reader.role}</Badge>
+                  {isOwner && (
+                    <ToastForm
+                      action={updateMemberRelationAction}
+                      successMessage="Relation updated"
+                      className="mt-3 flex flex-wrap items-end gap-2"
+                    >
+                      <input type="hidden" name="memberId" value={reader.id} />
+                      <div className="min-w-[10rem] flex-1">
+                        <RelationSelect
+                          id={`relation-${reader.id}`}
+                          defaultValue={reader.relationToChildren}
+                          label="Relation"
+                        />
+                      </div>
+                      <Button type="submit" size="sm" variant="secondary">
+                        Save
+                      </Button>
+                    </ToastForm>
+                  )}
                 </li>
               ))}
             </ul>

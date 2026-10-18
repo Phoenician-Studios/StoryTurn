@@ -51,6 +51,7 @@ export function createSeedState(now = new Date()): AppState {
         displayName: "Alex",
         email: "alex@example.com",
         role: "owner",
+        relationToChildren: "parent",
         createdAt: `${startDate}T12:00:00.000Z`,
       },
       {
@@ -60,6 +61,7 @@ export function createSeedState(now = new Date()): AppState {
         displayName: "Jordan",
         email: "jordan@example.com",
         role: "reader",
+        relationToChildren: "parent",
         createdAt: `${startDate}T12:00:00.000Z`,
       },
       {
@@ -69,6 +71,7 @@ export function createSeedState(now = new Date()): AppState {
         displayName: "Nana",
         email: "nana@example.com",
         role: "reader",
+        relationToChildren: "grandparent",
         createdAt: `${startDate}T12:05:00.000Z`,
       },
     ],

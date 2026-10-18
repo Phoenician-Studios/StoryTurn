@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createFamilyAction, joinFamilyAction } from "@/app/actions";
+import { RelationSelect } from "@/components/relation-select";
 import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,7 @@ export default async function OnboardingPage({
             <Label htmlFor="name">Family name</Label>
             <Input id="name" name="name" placeholder="The Riveras" required />
           </div>
+          <RelationSelect defaultValue="parent" id="create-relation" />
           <Button type="submit">Create family</Button>
         </ToastForm>
         <ToastForm
@@ -85,6 +87,7 @@ export default async function OnboardingPage({
               defaultValue={defaultCode}
             />
           </div>
+          <RelationSelect defaultValue="other" id="join-relation" />
           <Button type="submit" variant="secondary">
             Join family
           </Button>

@@ -42,13 +42,12 @@ export function ageFromBirthday(birthday: string, asOf = localDateOnly()): numbe
   return age;
 }
 
-/** Short display like "Mar 12, 2019". */
+/** Short display like "Mar 12" (no year). */
 export function formatBirthdayLabel(birthday: string): string {
   const d = parseDateOnly(birthday);
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
     timeZone: "UTC",
   }).format(d);
 }

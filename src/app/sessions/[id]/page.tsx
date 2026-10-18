@@ -13,10 +13,15 @@ import {
   originalReaderLabels,
   wasCorrected,
 } from "@/lib/domain/corrections";
-import { isPastSession, sessionDateKey } from "@/lib/domain/sessions";
+import {
+  formatRelativeInstant,
+  formatRelativeSessionWhen,
+} from "@/lib/domain/dates";
+import { isPastSession } from "@/lib/domain/sessions";
 import {
   getCurrentMember,
   getCurrentUser,
+  getFamilyTimezone,
   getSessionDetail,
 } from "@/lib/demo/store";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,6 +39,7 @@ export default async function SessionPage({
   const { id } = await params;
   const detail = getSessionDetail(id);
   if (!detail) redirect("/");
+  const timeZone = getFamilyTimezone();
 
   const corrected = wasCorrected({
     assignments: detail.assignments,
@@ -58,8 +64,9 @@ export default async function SessionPage({
             {corrected && <Badge className="bg-accent text-accent-foreground">Corrected</Badge>}
           </div>
           <h1 className="font-display mt-3 text-3xl text-primary">
-            {sessionDateKey(detail.session.scheduledFor)} ·{" "}
-            {detail.session.scheduledFor.slice(11, 16)}
+            {formatRelativeSessionWhen(detail.session.scheduledFor, {
+              timeZone,
+            })}
           </h1>
           <p className="mt-2 text-muted-foreground">
             Current reader:{" "}
@@ -92,7 +99,7 @@ export default async function SessionPage({
               <div key={c.id} className="story-panel rounded-xl p-4 text-sm">
                 <p className="font-medium">{c.reason}</p>
                 <p className="mt-1 text-muted-foreground">
-                  {new Date(c.createdAt).toLocaleString()}
+                  {formatRelativeInstant(c.createdAt, timeZone)}
                 </p>
               </div>
             ))}

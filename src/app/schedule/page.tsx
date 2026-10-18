@@ -1,6 +1,10 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import { saveScheduleAction } from "@/app/actions";
+import {
+  cascadeInsertAction,
+  saveScheduleAction,
+  swapSessionsAction,
+} from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
@@ -13,6 +17,13 @@ import {
   getFamilyAdmin,
   listFamilySessions,
 } from "@/lib/demo/store";
+import {
+  DEFAULT_FAMILY_TIMEZONE,
+  formatDateOnlyInTimeZone,
+  formatRelativeDay,
+  formatRelativeSessionWhen,
+} from "@/lib/domain/dates";
+import { childRelationLabel } from "@/lib/domain/relations";
 import { sessionDateKey } from "@/lib/domain/sessions";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -24,11 +35,33 @@ export default function SchedulePage() {
   if (!member) redirect("/onboarding");
   const admin = getFamilyAdmin();
   if (!admin) redirect("/onboarding");
-  const sessions = listFamilySessions().slice(0, 12);
   const names = Object.fromEntries(
     admin.readers.map((r) => [r.id, r.displayName]),
   );
   const assignments = getDemoState().assignments;
+  const isOwner = member.role === "owner";
+  const timeZone = admin.schedule?.timezone ?? DEFAULT_FAMILY_TIMEZONE;
+  const today = formatDateOnlyInTimeZone(new Date(), timeZone);
+  const allSessions = listFamilySessions();
+  // Ascending list: start a couple nights before today so "recent" still appears,
+  // then take the next 12 chronologically.
+  const listStart = Math.max(
+    0,
+    allSessions.findIndex(
+      (s) => sessionDateKey(s.scheduledFor) >= today,
+    ) - 2,
+  );
+  const sessions = allSessions.slice(listStart, listStart + 12);
+  const futureScheduled = allSessions.filter(
+    (s) =>
+      s.status === "scheduled" && sessionDateKey(s.scheduledFor) >= today,
+  );
+
+  const readerLabel = (sessionId: string) =>
+    assignments
+      .filter((a) => a.sessionId === sessionId && a.isCurrent)
+      .map((a) => names[a.memberId] ?? "Reader")
+      .join(", ");
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -64,7 +97,12 @@ export default function SchedulePage() {
                       : true
                   }
                 />
-                {reader.displayName}
+                <span>
+                  {reader.displayName}
+                  <span className="ml-1 text-muted-foreground">
+                    ({childRelationLabel(reader.relationToChildren)})
+                  </span>
+                </span>
               </label>
             ))}
           </div>
@@ -113,6 +151,113 @@ export default function SchedulePage() {
           <Button type="submit">Save schedule & generate nights</Button>
         </ToastForm>
 
+        {isOwner && futureScheduled.length > 0 && (
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            <ToastForm
+              action={cascadeInsertAction}
+              successMessage="Rotation cascaded forward"
+              className="story-panel space-y-4 rounded-2xl p-5"
+            >
+              <div>
+                <h2 className="font-display text-xl">Cascade a fill-in</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Put someone on a night (like a grandparent covering tonight)
+                  and shift everyone after them forward one day.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fromSessionId">Starting night</Label>
+                <select
+                  id="fromSessionId"
+                  name="fromSessionId"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  required
+                  defaultValue={futureScheduled[0]?.id}
+                >
+                  {futureScheduled.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {formatRelativeDay(session.scheduledFor, today, timeZone)}{" "}
+                      · {readerLabel(session.id)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fillInMemberId">Fill-in reader</Label>
+                <select
+                  id="fillInMemberId"
+                  name="fillInMemberId"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  required
+                  defaultValue={
+                    admin.readers.find((r) => r.relationToChildren === "grandparent")
+                      ?.id ?? admin.readers[0]?.id
+                  }
+                >
+                  {admin.readers.map((reader) => (
+                    <option key={reader.id} value={reader.id}>
+                      {reader.displayName} (
+                      {childRelationLabel(reader.relationToChildren)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button type="submit">Cascade forward</Button>
+            </ToastForm>
+
+            <ToastForm
+              action={swapSessionsAction}
+              successMessage="Nights swapped"
+              className="story-panel space-y-4 rounded-2xl p-5"
+            >
+              <div>
+                <h2 className="font-display text-xl">Swap two nights</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Exchange readers between two nights without shifting the rest
+                  of the rotation.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sessionAId">First night</Label>
+                <select
+                  id="sessionAId"
+                  name="sessionAId"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  required
+                  defaultValue={futureScheduled[0]?.id}
+                >
+                  {futureScheduled.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {formatRelativeDay(session.scheduledFor, today, timeZone)}{" "}
+                      · {readerLabel(session.id)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sessionBId">Second night</Label>
+                <select
+                  id="sessionBId"
+                  name="sessionBId"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  required
+                  defaultValue={futureScheduled[1]?.id ?? futureScheduled[0]?.id}
+                >
+                  {futureScheduled.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {formatRelativeDay(session.scheduledFor, today, timeZone)}{" "}
+                      · {readerLabel(session.id)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button type="submit" variant="secondary">
+                Swap readers
+              </Button>
+            </ToastForm>
+          </div>
+        )}
+
         <section className="mt-8">
           <h2 className="font-display text-xl">Upcoming & recent</h2>
           <ul className="mt-4 space-y-2">
@@ -120,18 +265,19 @@ export default function SchedulePage() {
               <li key={session.id}>
                 <Link
                   href={`/sessions/${session.id}`}
-                  className="story-panel flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 transition hover:border-primary/40"
+                  className="story-panel grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 rounded-xl px-4 py-3 transition hover:border-primary/40"
                 >
-                  <span>
-                    {sessionDateKey(session.scheduledFor)} ·{" "}
-                    {session.scheduledFor.slice(11, 16)}
+                  <span className="min-w-0 truncate">
+                    {formatRelativeSessionWhen(session.scheduledFor, {
+                      today,
+                      timeZone,
+                    })}
                   </span>
-                  <Badge variant="outline">{session.status}</Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {assignments
-                      .filter((a) => a.sessionId === session.id && a.isCurrent)
-                      .map((a) => names[a.memberId] ?? "Reader")
-                      .join(", ")}
+                  <Badge variant="outline" className="justify-self-center">
+                    {session.status}
+                  </Badge>
+                  <span className="min-w-0 truncate text-right text-sm text-muted-foreground">
+                    {readerLabel(session.id)}
                   </span>
                 </Link>
               </li>

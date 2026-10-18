@@ -1,3 +1,5 @@
+import type { ChildRelation } from "@/lib/domain/relations";
+
 export type MemberRole = "owner" | "reader";
 
 export type SessionStatus = "scheduled" | "completed" | "cancelled";
@@ -5,6 +7,8 @@ export type SessionStatus = "scheduled" | "completed" | "cancelled";
 export type BookTiming = "ahead" | "after";
 
 export type ScheduleMode = "together";
+
+export type { ChildRelation };
 
 export interface Family {
   id: string;
@@ -20,6 +24,8 @@ export interface FamilyMember {
   displayName: string;
   email: string;
   role: MemberRole;
+  /** How this adult relates to the family's children. */
+  relationToChildren: ChildRelation;
   createdAt: string;
 }
 

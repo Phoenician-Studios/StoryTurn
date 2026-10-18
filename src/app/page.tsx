@@ -7,9 +7,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   getDemoState,
+  getFamilyTimezone,
   getHomeContext,
 } from "@/lib/demo/store";
-import { sessionDateKey } from "@/lib/domain/sessions";
+import { formatRelativeSessionWhen } from "@/lib/domain/dates";
 import {
   currentReaderLabels,
   originalReaderLabels,
@@ -22,6 +23,7 @@ export default function HomePage() {
   if (!home.member) redirect("/onboarding");
 
   const state = getDemoState();
+  const timeZone = getFamilyTimezone();
   const memberNames = Object.fromEntries(
     home.readers.map((r) => [r.id, r.displayName]),
   );
@@ -65,8 +67,7 @@ export default function HomePage() {
                 )}
               </div>
               <h1 className="font-display mt-4 text-3xl tracking-tight md:text-4xl">
-                {sessionDateKey(next.scheduledFor)} at{" "}
-                {next.scheduledFor.slice(11, 16)}
+                {formatRelativeSessionWhen(next.scheduledFor, { timeZone })}
               </h1>
               <p className="mt-3 text-lg text-foreground/90">
                 Reader:{" "}

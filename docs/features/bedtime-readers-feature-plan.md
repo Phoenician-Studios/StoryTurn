@@ -168,6 +168,7 @@ Correction rule: editing a past session never deletes original assignment rows (
 - Wire demo store paths to live Supabase Auth/DB once project credentials exist.
 - Enable Google provider + password reset emails in Supabase; real Plunk sends; QStash schedule.
 - After GitHub repo exists: require `lint-test-build` status check on `main`.
+- Related: owner cascade/swap + member `relationToChildren` tracked in [`rotation-cascade-swap-feature-plan.md`](./rotation-cascade-swap-feature-plan.md).
 
 ### Blockers / risks
 
