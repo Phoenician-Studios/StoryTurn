@@ -1,6 +1,9 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import { updateSessionAction } from "@/app/actions";
+import {
+  shuffleSessionBooksAction,
+  updateSessionAction,
+} from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { CancelSessionForm } from "@/components/cancel-session-form";
 import { ToastForm } from "@/components/toast-form";
@@ -17,6 +20,7 @@ import {
   formatRelativeInstant,
   formatRelativeSessionWhen,
 } from "@/lib/domain/dates";
+import { SESSION_BOOK_PICK_COUNT } from "@/lib/domain/session-books";
 import { isPastSession } from "@/lib/domain/sessions";
 import {
   getCurrentMember,
@@ -104,6 +108,27 @@ export default async function SessionPage({
               </div>
             ))}
           </section>
+        )}
+
+        {detail.library.length > 0 &&
+          detail.session.status === "scheduled" &&
+          !past && (
+          <ToastForm
+            action={shuffleSessionBooksAction}
+            successMessage={`Picked ${Math.min(SESSION_BOOK_PICK_COUNT, detail.library.length)} new books`}
+            className="story-panel mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5"
+          >
+            <div>
+              <h2 className="font-display text-xl">Shuffle tonight&apos;s books</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Replace the library picks on this night with a fresh random set.
+              </p>
+            </div>
+            <input type="hidden" name="sessionId" value={id} />
+            <Button type="submit" variant="secondary">
+              Shuffle books
+            </Button>
+          </ToastForm>
         )}
 
         <ToastForm

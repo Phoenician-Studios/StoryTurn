@@ -1,8 +1,10 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import {
+  addRandomBooksToUpcomingAction,
   cascadeInsertAction,
   saveScheduleAction,
+  shuffleUpcomingBooksAction,
   swapSessionsAction,
 } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
@@ -15,6 +17,7 @@ import {
   getCurrentUser,
   getDemoState,
   getFamilyAdmin,
+  getUpcomingBookCtaState,
   listFamilySessions,
 } from "@/lib/demo/store";
 import {
@@ -24,6 +27,7 @@ import {
   formatRelativeSessionWhen,
 } from "@/lib/domain/dates";
 import { childRelationLabel } from "@/lib/domain/relations";
+import { SESSION_BOOK_PICK_COUNT } from "@/lib/domain/session-books";
 import { sessionDateKey } from "@/lib/domain/sessions";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +60,7 @@ export default function SchedulePage() {
     (s) =>
       s.status === "scheduled" && sessionDateKey(s.scheduledFor) >= today,
   );
+  const bookCta = getUpcomingBookCtaState();
 
   const readerLabel = (sessionId: string) =>
     assignments
@@ -150,6 +155,57 @@ export default function SchedulePage() {
           </div>
           <Button type="submit">Save schedule & generate nights</Button>
         </ToastForm>
+
+        {bookCta.libraryCount > 0 && bookCta.upcomingCount > 0 && (
+          <section className="story-panel mt-6 space-y-4 rounded-2xl p-5">
+            <div>
+              <h2 className="font-display text-xl">Bedtime books</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                New nights get {SESSION_BOOK_PICK_COUNT} random library books
+                automatically. Use these when you want to fill empty nights or
+                reshuffle picks across the schedule.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {bookCta.withoutBooksCount > 0 && (
+                <ToastForm
+                  action={addRandomBooksToUpcomingAction}
+                  successMessage={(result) => {
+                    const updated =
+                      result &&
+                      typeof result === "object" &&
+                      "updated" in result
+                        ? Number((result as { updated: number }).updated)
+                        : 0;
+                    return `Added books to ${updated} night${updated === 1 ? "" : "s"}`;
+                  }}
+                >
+                  <Button type="submit">
+                    Add random books to upcoming nights
+                  </Button>
+                </ToastForm>
+              )}
+              {bookCta.withBooksCount > 0 && (
+                <ToastForm
+                  action={shuffleUpcomingBooksAction}
+                  successMessage={(result) => {
+                    const updated =
+                      result &&
+                      typeof result === "object" &&
+                      "updated" in result
+                        ? Number((result as { updated: number }).updated)
+                        : 0;
+                    return `Shuffled books on ${updated} night${updated === 1 ? "" : "s"}`;
+                  }}
+                >
+                  <Button type="submit" variant="secondary">
+                    Shuffle books for all upcoming nights
+                  </Button>
+                </ToastForm>
+              )}
+            </div>
+          </section>
+        )}
 
         {isOwner && futureScheduled.length > 0 && (
           <div className="mt-6 grid gap-6 md:grid-cols-2">

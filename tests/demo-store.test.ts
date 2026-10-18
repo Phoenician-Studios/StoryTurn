@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   addKid,
+  addRandomBooksToUpcomingSessions,
   cancelSession,
   cascadeInsertReader,
   demoLogin,
@@ -9,12 +10,16 @@ import {
   getDashboard,
   getHomeContext,
   getSessionDetail,
+  getUpcomingBookCtaState,
   resetDemoStore,
+  shuffleBooksForUpcomingSessions,
+  shuffleSessionBooks,
   swapSessionReaders,
   updateMemberRelation,
   updateSession,
 } from "@/lib/demo/store";
 import { formatDateOnly } from "@/lib/domain/rotation";
+import { SESSION_BOOK_PICK_COUNT } from "@/lib/domain/session-books";
 import { sessionDateKey } from "@/lib/domain/sessions";
 
 describe("demo store", () => {
@@ -202,5 +207,59 @@ describe("demo store", () => {
         fillInMemberId: "mem_nana",
       }),
     ).rejects.toThrow(/family admins/);
+  });
+
+  it("seeds upcoming nights with three library books", () => {
+    demoLogin("alex@example.com");
+    const today = formatDateOnly(new Date());
+    const upcoming = getDemoState().sessions.filter(
+      (s) =>
+        s.status === "scheduled" && sessionDateKey(s.scheduledFor) >= today,
+    );
+    expect(upcoming.length).toBeGreaterThan(0);
+    for (const session of upcoming) {
+      const books = getDemoState().sessionBooks.filter(
+        (b) => b.sessionId === session.id && b.bookId,
+      );
+      expect(books.length).toBe(SESSION_BOOK_PICK_COUNT);
+    }
+    expect(getUpcomingBookCtaState().withBooksCount).toBe(upcoming.length);
+    expect(getUpcomingBookCtaState().withoutBooksCount).toBe(0);
+  });
+
+  it("shuffles books for one session and for all upcoming nights", () => {
+    demoLogin("alex@example.com");
+    const home = getHomeContext();
+    const sessionId = home.nextSession!.id;
+    const afterOne = shuffleSessionBooks(sessionId).slice().sort();
+    expect(afterOne).toHaveLength(SESSION_BOOK_PICK_COUNT);
+
+    // Clear one upcoming night, then fill via add-random CTA
+    const today = formatDateOnly(new Date());
+    const target = getDemoState().sessions.find(
+      (s) =>
+        s.status === "scheduled" && sessionDateKey(s.scheduledFor) >= today,
+    )!;
+    getDemoState().sessionBooks = getDemoState().sessionBooks.filter(
+      (b) => b.sessionId !== target.id,
+    );
+    expect(addRandomBooksToUpcomingSessions()).toBeGreaterThan(0);
+    expect(
+      getDemoState().sessionBooks.filter(
+        (b) => b.sessionId === target.id && b.bookId,
+      ),
+    ).toHaveLength(SESSION_BOOK_PICK_COUNT);
+
+    const shuffledCount = shuffleBooksForUpcomingSessions();
+    expect(shuffledCount).toBeGreaterThan(0);
+  });
+
+  it("rejects shuffling books on completed nights", () => {
+    demoLogin("alex@example.com");
+    const completed = getDemoState().sessions.find(
+      (s) => s.status === "completed",
+    );
+    expect(completed).toBeTruthy();
+    expect(() => shuffleSessionBooks(completed!.id)).toThrow(/scheduled nights/);
   });
 });

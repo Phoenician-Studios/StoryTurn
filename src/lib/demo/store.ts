@@ -15,9 +15,17 @@ import {
 } from "@/lib/domain/sessions";
 import { computeDashboardStats } from "@/lib/domain/stats";
 import { parseBirthday } from "@/lib/domain/kids";
-import { DEFAULT_FAMILY_TIMEZONE } from "@/lib/domain/dates";
+import {
+  DEFAULT_FAMILY_TIMEZONE,
+  formatDateOnlyInTimeZone,
+} from "@/lib/domain/dates";
 import { parseChildRelation, type ChildRelation } from "@/lib/domain/relations";
 import { addDays, formatDateOnly } from "@/lib/domain/rotation";
+import {
+  pickRandomBookIds,
+  SESSION_BOOK_PICK_COUNT,
+  sessionHasLibraryBooks,
+} from "@/lib/domain/session-books";
 import { createSeedState } from "@/lib/demo/seed";
 import { buildReadingInviteIcs, readingInviteSubject } from "@/lib/ics";
 import { sendEmail } from "@/lib/plunk";
@@ -45,6 +53,67 @@ function state(): AppState {
 
 function id(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function familyLibraryIds(familyId: string): string[] {
+  return state()
+    .books.filter((b) => b.familyId === familyId)
+    .map((b) => b.id);
+}
+
+/** Replace a session's library books with a fresh random pick (keeps freeform titles). */
+function setSessionLibraryBooks(sessionId: string, bookIds: string[]): void {
+  const freeform = state().sessionBooks.filter(
+    (b) => b.sessionId === sessionId && b.bookId === null,
+  );
+  state().sessionBooks = state().sessionBooks.filter(
+    (b) => b.sessionId !== sessionId,
+  );
+  const now = new Date().toISOString();
+  for (const bookId of bookIds) {
+    state().sessionBooks.push({
+      id: id("sb"),
+      sessionId,
+      bookId,
+      titleFreeform: null,
+      createdAt: now,
+    });
+  }
+  state().sessionBooks.push(...freeform);
+}
+
+function assignRandomBooksToSession(
+  sessionId: string,
+  familyId: string,
+  count: number = SESSION_BOOK_PICK_COUNT,
+): string[] {
+  const picked = pickRandomBookIds(familyLibraryIds(familyId), count);
+  if (picked.length === 0) return [];
+  setSessionLibraryBooks(sessionId, picked);
+  return picked;
+}
+
+function familyTimezone(familyId: string): string {
+  return (
+    state().schedules.find((s) => s.familyId === familyId && s.active)
+      ?.timezone ?? DEFAULT_FAMILY_TIMEZONE
+  );
+}
+
+function upcomingScheduledSessions(familyId: string): ReadingSession[] {
+  // Match schedule UI: family-local calendar day, not UTC date-only.
+  const today = formatDateOnlyInTimeZone(
+    new Date(),
+    familyTimezone(familyId),
+  );
+  return state()
+    .sessions.filter(
+      (s) =>
+        s.familyId === familyId &&
+        s.status === "scheduled" &&
+        sessionDateKey(s.scheduledFor) >= today,
+    )
+    .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
 }
 
 export function resetDemoStore(): void {
@@ -269,11 +338,104 @@ export async function cascadeInsertReader(input: {
     sessionId: extraSessionId,
     newMemberIds: [plan.extraNightMemberId],
   });
+  assignRandomBooksToSession(extraSessionId, actor.familyId);
   await sendSessionInvite(extraSessionId, "REQUEST");
 
   return {
     changedSessionIds: plan.reassignments.map((r) => r.sessionId),
     extraSessionId,
+  };
+}
+
+/**
+ * Fill upcoming scheduled nights that have no library books with a random pick.
+ * Returns how many nights were updated.
+ */
+export function addRandomBooksToUpcomingSessions(): number {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  const library = familyLibraryIds(member.familyId);
+  if (library.length === 0) {
+    throw new Error("Add books to the family library first");
+  }
+
+  let updated = 0;
+  for (const session of upcomingScheduledSessions(member.familyId)) {
+    if (sessionHasLibraryBooks(state().sessionBooks, session.id)) continue;
+    assignRandomBooksToSession(session.id, member.familyId);
+    updated += 1;
+  }
+  return updated;
+}
+
+/**
+ * Re-pick random library books for every upcoming scheduled night.
+ */
+export function shuffleBooksForUpcomingSessions(): number {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  const library = familyLibraryIds(member.familyId);
+  if (library.length === 0) {
+    throw new Error("Add books to the family library first");
+  }
+
+  let updated = 0;
+  for (const session of upcomingScheduledSessions(member.familyId)) {
+    assignRandomBooksToSession(session.id, member.familyId);
+    updated += 1;
+  }
+  return updated;
+}
+
+/** Re-pick random library books for one upcoming scheduled session. */
+export function shuffleSessionBooks(sessionId: string): string[] {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  const session = state().sessions.find(
+    (s) => s.id === sessionId && s.familyId === member.familyId,
+  );
+  if (!session) throw new Error("Session not found");
+  if (session.status !== "scheduled") {
+    throw new Error("Only scheduled nights can shuffle books");
+  }
+  if (isPastSession(session.scheduledFor)) {
+    throw new Error(
+      "Past nights cannot shuffle books; edit the session with a correction instead",
+    );
+  }
+  const library = familyLibraryIds(member.familyId);
+  if (library.length === 0) {
+    throw new Error("Add books to the family library first");
+  }
+  return assignRandomBooksToSession(session.id, member.familyId);
+}
+
+export function getUpcomingBookCtaState() {
+  const member = getCurrentMember();
+  if (!member) {
+    return {
+      libraryCount: 0,
+      upcomingCount: 0,
+      withoutBooksCount: 0,
+      withBooksCount: 0,
+    };
+  }
+  const libraryCount = familyLibraryIds(member.familyId).length;
+  const upcoming = upcomingScheduledSessions(member.familyId);
+  let withoutBooksCount = 0;
+  let withBooksCount = 0;
+  for (const session of upcoming) {
+    if (sessionHasLibraryBooks(state().sessionBooks, session.id)) {
+      withBooksCount += 1;
+    } else {
+      withoutBooksCount += 1;
+    }
+  }
+  return {
+    libraryCount,
+    upcomingCount: upcoming.length,
+    withoutBooksCount,
+    withBooksCount,
   };
 }
 
@@ -406,6 +568,7 @@ export function ensureUpcomingSessions(daysAhead = 14): number {
         sessionId,
         newMemberIds: [draft.memberId],
       });
+      assignRandomBooksToSession(sessionId, schedule.familyId);
       void sendSessionInvite(sessionId, "REQUEST");
       created += 1;
     }
@@ -708,10 +871,7 @@ export function getFamilyAdmin() {
 export function getFamilyTimezone(): string {
   const member = getCurrentMember();
   if (!member) return DEFAULT_FAMILY_TIMEZONE;
-  return (
-    state().schedules.find((s) => s.familyId === member.familyId && s.active)
-      ?.timezone ?? DEFAULT_FAMILY_TIMEZONE
-  );
+  return familyTimezone(member.familyId);
 }
 
 export function createInviteCode(): string {

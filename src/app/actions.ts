@@ -6,6 +6,7 @@ import { acceptPendingInviteForCurrentUser } from "@/lib/accept-pending-invite";
 import {
   addBookFromSearch,
   addKid,
+  addRandomBooksToUpcomingSessions,
   cancelSession,
   cascadeInsertReader,
   createFamily,
@@ -15,6 +16,8 @@ import {
   getCurrentMember,
   joinFamily,
   saveSchedule,
+  shuffleBooksForUpcomingSessions,
+  shuffleSessionBooks,
   swapSessionReaders,
   updateMemberRelation,
   updateSession,
@@ -133,6 +136,30 @@ export async function saveScheduleAction(formData: FormData) {
   });
   revalidatePath("/schedule");
   revalidatePath("/");
+}
+
+export async function addRandomBooksToUpcomingAction(_formData?: FormData) {
+  void _formData;
+  const updated = addRandomBooksToUpcomingSessions();
+  revalidatePath("/schedule");
+  revalidatePath("/");
+  return { updated };
+}
+
+export async function shuffleUpcomingBooksAction(_formData?: FormData) {
+  void _formData;
+  const updated = shuffleBooksForUpcomingSessions();
+  revalidatePath("/schedule");
+  revalidatePath("/");
+  return { updated };
+}
+
+export async function shuffleSessionBooksAction(formData: FormData) {
+  const sessionId = String(formData.get("sessionId") ?? "");
+  shuffleSessionBooks(sessionId);
+  revalidatePath("/");
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath("/schedule");
 }
 
 export async function searchBooksAction(query: string) {
