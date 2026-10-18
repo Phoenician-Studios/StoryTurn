@@ -8,6 +8,7 @@ import {
   sessionDateKey,
 } from "@/lib/domain/sessions";
 import { computeDashboardStats } from "@/lib/domain/stats";
+import { parseBirthday } from "@/lib/domain/kids";
 import { addDays, formatDateOnly } from "@/lib/domain/rotation";
 import { createSeedState } from "@/lib/demo/seed";
 import { buildReadingInviteIcs, readingInviteSubject } from "@/lib/ics";
@@ -168,14 +169,17 @@ export function joinFamily(codeRaw: string): void {
   });
 }
 
-export function addKid(name: string, age: number): Kid {
+export function addKid(name: string, birthdayRaw: string): Kid {
   const member = getCurrentMember();
   if (!member) throw new Error("Join a family first");
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Name is required");
+  const birthday = parseBirthday(birthdayRaw);
   const kid: Kid = {
     id: id("kid"),
     familyId: member.familyId,
-    name: name.trim(),
-    age,
+    name: trimmed,
+    birthday,
     createdAt: new Date().toISOString(),
   };
   state().kids.push(kid);

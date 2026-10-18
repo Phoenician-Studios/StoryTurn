@@ -27,7 +27,8 @@ export interface Kid {
   id: string;
   familyId: string;
   name: string;
-  age: number;
+  /** YYYY-MM-DD */
+  birthday: string;
   createdAt: string;
 }
 

@@ -8,7 +8,7 @@ Family bedtime reading tracker: whose night it is, book library, scheduled readi
 |-------|-------|
 | Status | in-progress (demo app shipping on main) |
 | Owner session | cloud agent (new project) |
-| Last updated | 2026-10-04 |
+| Last updated | 2026-10-18 |
 | Related PR / branch | `main` |
 
 ## Goals (v1)
@@ -77,7 +77,7 @@ erDiagram
 
 - **families** — `id`, `name`, `created_by`, timestamps
 - **family_members** — `family_id`, `user_id`, `display_name`, `role` (`owner` | `reader`), `email`
-- **kids** — `family_id`, `name`, `age`, optional `avatar_url` (unused in v1 UI)
+- **kids** — `family_id`, `name`, `birthday` (date; age derived in UI), optional `avatar_url` (unused in v1 UI)
 - **invite_codes** — `family_id`, `code`, `expires_at`, `max_uses`, `uses`, `created_by`
 - **books** — `family_id`, `title`, `authors`, `open_library_key`, `cover_url`, `isbn`
 - **schedules** — `family_id`, `mode` (`together` | `per_kid` later), `reader_rotation` (ordered member ids), `start_date`, `time_local`, `timezone`, `book_timing` (`ahead` | `after`), `active`
@@ -159,8 +159,9 @@ Correction rule: editing a past session never deletes original assignment rows (
 
 - Requirements locked (ICS, calendar in v1, dashboard filters, cancel, multi-reader invites, tests+CI).
 - Feature plan written.
-- Next.js app shipped on `main` with demo mode, domain unit tests (25), and GitHub Actions CI.
+- Next.js app shipped on `main` with demo mode, domain unit tests, and GitHub Actions CI.
 - Supabase SQL migration + client stubs ready for real credentials.
+- Kids store `birthday` (YYYY-MM-DD) instead of static `age`; family UI collects a date and shows formatted birthday + derived years.
 
 ### Remaining work
 
@@ -175,6 +176,6 @@ Correction rule: editing a past session never deletes original assignment rows (
 
 ### Pointers for the next agent
 
-- Start at: replace demo store calls with Supabase queries while keeping domain helpers.
+- Start at: replace demo store calls with Supabase queries while keeping domain helpers (`src/lib/domain/kids.ts` for birthday parsing/age).
 - Do not: add per-kid ownership or profile photos in v1.
-- Verify with: `npm test`, `npm run lint`, `npm run build`, manual happy path on home → session → library → dashboard.
+- Verify with: `npm test`, `npm run lint`, `npm run build`, manual happy path on home → family (add kid birthday) → session → library → dashboard.

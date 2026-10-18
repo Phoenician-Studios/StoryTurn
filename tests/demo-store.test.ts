@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  addKid,
   cancelSession,
   demoLogin,
+  getFamilyAdmin,
   getDashboard,
   getHomeContext,
   getSessionDetail,
@@ -20,6 +22,17 @@ describe("demo store", () => {
     expect(home.member?.displayName).toBe("Alex");
     expect(home.nextSession).not.toBeNull();
     expect(home.nextSession?.status).toBe("scheduled");
+    expect(home.kids.every((k) => Boolean(k.birthday))).toBe(true);
+  });
+
+  it("adds a kid with a birthday instead of a static age", () => {
+    demoLogin("alex@example.com");
+    const kid = addKid("Sam", "2023-01-15");
+    expect(kid.birthday).toBe("2023-01-15");
+    const admin = getFamilyAdmin();
+    expect(admin?.kids.some((k) => k.id === kid.id && k.birthday === "2023-01-15")).toBe(
+      true,
+    );
   });
 
   it("defaults dashboard filter to current member", () => {

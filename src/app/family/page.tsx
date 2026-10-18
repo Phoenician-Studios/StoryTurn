@@ -14,6 +14,10 @@ import {
   getCurrentUser,
   getFamilyAdmin,
 } from "@/lib/demo/store";
+import {
+  ageFromBirthday,
+  formatBirthdayLabel,
+} from "@/lib/domain/kids";
 import { invitePath } from "@/lib/domain/invites";
 import { appUrl } from "@/lib/config";
 
@@ -66,7 +70,9 @@ export default function FamilyPage() {
                 >
                   <span className="font-medium">{kid.name}</span>
                   <span className="text-sm text-muted-foreground">
-                    Age {kid.age}
+                    {formatBirthdayLabel(kid.birthday)}
+                    {" · "}
+                    {ageFromBirthday(kid.birthday)} yrs
                   </span>
                 </li>
               ))}
@@ -74,15 +80,15 @@ export default function FamilyPage() {
             <ToastForm
               action={addKidAction}
               successMessage="Kid added"
-              className="mt-4 grid gap-3 sm:grid-cols-[1fr_5rem_auto]"
+              className="mt-4 grid gap-3 sm:grid-cols-[1fr_10rem_auto]"
             >
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input id="name" name="name" required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="age">Age</Label>
-                <Input id="age" name="age" type="number" min={0} max={18} required />
+                <Label htmlFor="birthday">Birthday</Label>
+                <Input id="birthday" name="birthday" type="date" required />
               </div>
               <div className="flex items-end">
                 <Button type="submit">Add</Button>

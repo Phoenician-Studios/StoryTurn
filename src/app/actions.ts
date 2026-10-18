@@ -71,7 +71,10 @@ export async function joinFamilyAction(formData: FormData) {
 }
 
 export async function addKidAction(formData: FormData) {
-  addKid(String(formData.get("name") ?? ""), Number(formData.get("age") ?? 0));
+  addKid(
+    String(formData.get("name") ?? ""),
+    String(formData.get("birthday") ?? ""),
+  );
   revalidatePath("/kids");
   revalidatePath("/family");
 }
