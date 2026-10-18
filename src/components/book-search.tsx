@@ -20,7 +20,7 @@ export function BookSearch() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by title or author"
+          placeholder="Title, author, or ISBN / barcode"
           aria-label="Search books"
         />
         <Button
@@ -48,13 +48,13 @@ export function BookSearch() {
             });
           }}
         >
-          {pending ? "Searching…" : "Search Open Library"}
+          {pending ? "Searching…" : "Search"}
         </Button>
       </div>
       <ul className="space-y-3">
         {results.map((book) => (
           <li
-            key={book.openLibraryKey}
+            key={book.sourceId}
             className="flex flex-col gap-3 rounded-xl border border-border/80 bg-card/70 p-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex gap-3">
@@ -91,7 +91,7 @@ export function BookSearch() {
               <input
                 type="hidden"
                 name="openLibraryKey"
-                value={book.openLibraryKey}
+                value={book.openLibraryKey ?? ""}
               />
               <input type="hidden" name="coverUrl" value={book.coverUrl ?? ""} />
               <input type="hidden" name="isbn" value={book.isbn ?? ""} />

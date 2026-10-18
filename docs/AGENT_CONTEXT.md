@@ -6,6 +6,7 @@ Project rules for StoryTurn / bedtime-readers agents. Prefer this file over chat
 
 - Demo store is the default until Supabase credentials exist.
 - Do not commit secrets.
+- Optional `GOOGLE_BOOKS_API_KEY` enables Google-first ISBN/barcode and title search; without it, library search uses Open Library only.
 
 ## Timezones for session calendar days
 
@@ -18,3 +19,8 @@ Session `scheduledFor` values are **family-local wall times** (date + bedtime), 
 
 - Changing past or completed session assignments/books requires the correction audit path (`updateSession` with a reason).
 - Convenience actions (e.g. shuffle books) must only target **future scheduled** nights.
+
+## ISBN / barcode lookup
+
+- Normalize scanned UPC/EAN/ISBN-10 to ISBN-13 before provider calls.
+- When a code lookup succeeds but the provider omits `isbn`, **backfill from the normalized query code** so the family library stores what was scanned.
