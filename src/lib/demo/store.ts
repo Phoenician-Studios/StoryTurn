@@ -14,8 +14,9 @@ import {
   sessionDateKey,
 } from "@/lib/domain/sessions";
 import {
-  bookCodeKey,
   checkForDuplicate,
+  mergeKeptBook,
+  storedIsbnKey,
   type BookInput,
   type TitleDuplicateCandidate,
 } from "@/lib/domain/book-duplicates";
@@ -542,7 +543,7 @@ export function addBookFromSearch(
   const incoming: BookInput = {
     ...input,
     title,
-    isbn: bookCodeKey(input.isbn) ?? (input.isbn?.trim() || null),
+    isbn: storedIsbnKey(input.isbn),
   };
   const library = state().books.filter((b) => b.familyId === member.familyId);
   const check = checkForDuplicate(library, incoming);
@@ -557,11 +558,7 @@ export function addBookFromSearch(
         (c) => c.existing.id === resolution.existingBookId,
       )?.existing;
       if (!target) throw new Error("That book is no longer a match in your library");
-      target.title = incoming.title;
-      target.authors = incoming.authors;
-      target.openLibraryKey = incoming.openLibraryKey;
-      target.coverUrl = incoming.coverUrl;
-      target.isbn = incoming.isbn;
+      Object.assign(target, mergeKeptBook(incoming, target));
       return { status: "replaced", book: target };
     }
     if (resolution?.action !== "keep_both") {

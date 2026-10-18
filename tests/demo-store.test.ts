@@ -336,6 +336,18 @@ describe("demo store", () => {
       );
     });
 
+    it("keeps the existing ISBN when the replacement copy has none", () => {
+      demoLogin("alex@example.com");
+      const result = addBookFromSearch(
+        { ...goodnightMoonNoCover, isbn: null, coverUrl: "https://example.com/new.jpg" },
+        { action: "replace", existingBookId: "book_moon" },
+      );
+      expect(result).toMatchObject({
+        status: "replaced",
+        book: { isbn: "9780060775858", coverUrl: "https://example.com/new.jpg" },
+      });
+    });
+
     it("rejects replacing a book that is not a duplicate match", () => {
       demoLogin("alex@example.com");
       expect(() =>

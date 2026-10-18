@@ -33,6 +33,25 @@ export function bookCodeKey(isbn: string | null | undefined): string | null {
   return looksLikeBookCode(isbn) ? compactBookCode(isbn) : null;
 }
 
+/**
+ * Value stored in `books.isbn` and compared for exact duplicates. Matches the
+ * unique `(family_id, isbn)` index, so non-barcode provider ids dedupe too.
+ */
+export function storedIsbnKey(isbn: string | null | undefined): string | null {
+  return bookCodeKey(isbn) ?? (isbn?.trim() || null);
+}
+
+/** Keep the chosen copy's metadata, but never drop a field only the other copy has. */
+export function mergeKeptBook(kept: BookInput, other: BookInput): BookInput {
+  return {
+    title: kept.title || other.title,
+    authors: kept.authors.length > 0 ? kept.authors : other.authors,
+    openLibraryKey: kept.openLibraryKey ?? other.openLibraryKey,
+    coverUrl: kept.coverUrl ?? other.coverUrl,
+    isbn: kept.isbn ?? other.isbn,
+  };
+}
+
 const LEADING_ARTICLE = /^(the|a|an)\s+/;
 
 function foldText(value: string): string {
@@ -101,10 +120,10 @@ export function recommendKeep(existing: Book, incoming: BookInput): DuplicateKee
 }
 
 export function checkForDuplicate(library: Book[], incoming: BookInput): DuplicateCheck {
-  const code = bookCodeKey(incoming.isbn);
+  const code = storedIsbnKey(incoming.isbn);
   if (code) {
     const sameCode = library
-      .filter((book) => bookCodeKey(book.isbn) === code)
+      .filter((book) => storedIsbnKey(book.isbn) === code)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
     if (sameCode) return { kind: "same_isbn", existing: sameCode };
   }

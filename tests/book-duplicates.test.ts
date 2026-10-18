@@ -4,6 +4,7 @@ import {
   bookMetadataScore,
   checkForDuplicate,
   isLikelySameBook,
+  mergeKeptBook,
   normalizeTitleKey,
   recommendKeep,
   type BookInput,
@@ -49,6 +50,23 @@ describe("bookCodeKey", () => {
   it("ignores provider ids that are not barcodes", () => {
     expect(bookCodeKey("UOM:39015012345678")).toBeNull();
     expect(bookCodeKey(null)).toBeNull();
+  });
+});
+
+describe("mergeKeptBook", () => {
+  it("keeps the chosen copy and fills gaps from the other", () => {
+    expect(
+      mergeKeptBook(
+        input({ coverUrl: "https://x/new.jpg", authors: [] }),
+        input({ isbn: "9780060775858", openLibraryKey: "/works/OL1W" }),
+      ),
+    ).toEqual(
+      input({
+        coverUrl: "https://x/new.jpg",
+        isbn: "9780060775858",
+        openLibraryKey: "/works/OL1W",
+      }),
+    );
   });
 });
 
@@ -126,6 +144,13 @@ describe("checkForDuplicate", () => {
       kind: "same_title",
       candidates: [{ existing, recommended: "existing" }],
     });
+  });
+
+  it("treats identical non-barcode provider ids as the same book", () => {
+    const existing = book({ isbn: "UOM:39015012345678" });
+    expect(
+      checkForDuplicate([existing], input({ title: "Other", isbn: " UOM:39015012345678 " })),
+    ).toEqual({ kind: "same_isbn", existing });
   });
 
   it("returns none for a new book", () => {
