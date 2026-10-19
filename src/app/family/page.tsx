@@ -83,11 +83,11 @@ export default async function FamilyPage({
                     <>
                       <form
                         action={updateMemberAction}
-                        className="grid w-full min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]"
+                        className="grid w-full min-w-0 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_8rem]"
                       >
                         <input type="hidden" name="id" value={reader.id} />
-                        <label className="min-w-0 space-y-2 text-sm">
-                          Name
+                        <label className="grid min-w-0 gap-2 text-sm">
+                          <span className="font-medium">Name</span>
                           <Input
                             name="name"
                             aria-label={`Name for ${reader.displayName}`}
@@ -97,16 +97,16 @@ export default async function FamilyPage({
                           />
                         </label>
                         {reader.id === member.id ? (
-                          <div className="text-sm">
-                            <span>Access</span>
+                          <div className="grid gap-2 text-sm">
+                            <span className="font-medium">Access</span>
                             <p className="flex h-8 items-center text-muted-foreground">
                               Parent (you)
                             </p>
                             <input type="hidden" name="role" value={reader.role} />
                           </div>
                         ) : (
-                          <label className="min-w-0 space-y-2 text-sm">
-                            Access
+                          <label className="grid min-w-0 gap-2 text-sm">
+                            <span className="font-medium">Access</span>
                             <FormSelect
                               name="role"
                               aria-label={`Access for ${reader.displayName}`}
@@ -118,28 +118,22 @@ export default async function FamilyPage({
                             />
                           </label>
                         )}
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          className="w-full self-end sm:w-auto"
-                        >
+                        <Button type="submit" variant="outline" className="w-full">
                           Save reader
                         </Button>
                       </form>
                       <ToastForm
                         action={updateMemberRelationAction}
                         successMessage="Relation updated"
-                        className="flex flex-wrap items-end gap-2"
+                        className="grid w-full min-w-0 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]"
                       >
                         <input type="hidden" name="memberId" value={reader.id} />
-                        <div className="min-w-[10rem] flex-1">
-                          <RelationSelect
-                            id={`relation-${reader.id}`}
-                            defaultValue={reader.relationToChildren}
-                            label="Relation"
-                          />
-                        </div>
-                        <Button type="submit" size="sm" variant="secondary">
+                        <RelationSelect
+                          id={`relation-${reader.id}`}
+                          defaultValue={reader.relationToChildren}
+                          label="Relation"
+                        />
+                        <Button type="submit" variant="outline" className="w-full">
                           Save relation
                         </Button>
                       </ToastForm>
@@ -156,49 +150,46 @@ export default async function FamilyPage({
 
           <section className="story-panel rounded-2xl p-5">
             <h2 className="font-display text-xl">Kids</h2>
-            <ul className="mt-4 space-y-2">
+            <ul className="mt-4 space-y-3">
               {admin.kids.map((kid) => (
-                <li
-                  key={kid.id}
-                  className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2"
-                >
+                <li key={kid.id} className="rounded-xl bg-secondary/50 p-4">
                   {isOwner ? (
-                    <form
-                      action={updateKidAction}
-                      className="flex flex-wrap items-end gap-2"
-                    >
+                    <form action={updateKidAction} className="grid gap-3">
                       <input type="hidden" name="id" value={kid.id} />
-                      <label className="text-sm">
-                        Name
-                        <Input
-                          name="name"
-                          aria-label={`Name for ${kid.name}`}
-                          defaultValue={kid.name}
-                          required
-                        />
-                      </label>
-                      <label className="text-sm">
-                        Birthday
-                        <Input
-                          name="birthday"
-                          aria-label={`Birthday for ${kid.name}`}
-                          type="date"
-                          defaultValue={kid.birthday}
-                          required
-                          className="w-36"
-                        />
-                      </label>
-                      <Button type="submit" variant="outline">
-                        Save child
-                      </Button>
-                      <Button
-                        type="submit"
-                        formAction={deleteKidAction}
-                        formNoValidate
-                        variant="destructive"
-                      >
-                        Remove child
-                      </Button>
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
+                        <label className="grid min-w-0 gap-2 text-sm">
+                          <span className="font-medium">Name</span>
+                          <Input
+                            name="name"
+                            aria-label={`Name for ${kid.name}`}
+                            defaultValue={kid.name}
+                            required
+                          />
+                        </label>
+                        <label className="grid min-w-0 gap-2 text-sm">
+                          <span className="font-medium">Birthday</span>
+                          <Input
+                            name="birthday"
+                            aria-label={`Birthday for ${kid.name}`}
+                            type="date"
+                            defaultValue={kid.birthday}
+                            required
+                          />
+                        </label>
+                      </div>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button type="submit" variant="outline">
+                          Save child
+                        </Button>
+                        <Button
+                          type="submit"
+                          formAction={deleteKidAction}
+                          formNoValidate
+                          variant="destructive"
+                        >
+                          Remove child
+                        </Button>
+                      </div>
                     </form>
                   ) : (
                     <span>
@@ -213,7 +204,7 @@ export default async function FamilyPage({
               <ToastForm
                 action={addKidAction}
                 successMessage="Kid added"
-                className="mt-4 grid gap-3 sm:grid-cols-[1fr_10rem_auto]"
+                className="mt-4 grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"
               >
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
@@ -223,9 +214,7 @@ export default async function FamilyPage({
                   <Label htmlFor="birthday">Birthday</Label>
                   <Input id="birthday" name="birthday" type="date" required />
                 </div>
-                <div className="flex items-end">
-                  <Button type="submit">Add</Button>
-                </div>
+                <Button type="submit">Add kid</Button>
               </ToastForm>
             ) : (
               <p className="mt-4 text-sm text-muted-foreground">
