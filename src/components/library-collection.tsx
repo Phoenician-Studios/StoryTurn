@@ -161,7 +161,7 @@ export function LibraryCollection({ books }: { books: Book[] }) {
             This removes books from the shared family library. Books used in reading
             sessions will be kept to preserve your history.
           </DialogDescription>
-          <Button variant="cancel" disabled={pending} onClick={() => setOpen(false)}>
+          <Button variant="neutral" disabled={pending} onClick={() => setOpen(false)}>
             Keep books
           </Button>
           <Button
