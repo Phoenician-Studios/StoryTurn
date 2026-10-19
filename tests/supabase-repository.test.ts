@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { sendSessionInviteEmail } from "@/lib/session-mail";
 import {
+  addBookFromSearch,
+  cascadeInsertReader,
   ensureAllUpcomingSessions,
   saveSchedule,
   getFamilySessionPage,
@@ -430,4 +432,70 @@ it("filters both session count and rows by status within the current family", as
     total: 0,
     page: 1,
   });
+});
+
+it("adds search results to the live library and reports barcode and title duplicates", async () => {
+  fixture.tables.books = [
+    {
+      id: "existing",
+      family_id: "family",
+      title: "The Gruffalo",
+      authors: ["Julia Donaldson"],
+      isbn: "9780142403877",
+      created_at: "2026-01-01T00:00:00Z",
+    },
+  ];
+  const base = { authors: [], openLibraryKey: null, coverUrl: null };
+  expect(
+    await addBookFromSearch({ ...base, title: "Gruffalo copy", isbn: "0142403873" }),
+  ).toMatchObject({ status: "already_in_library", existing: { id: "existing" } });
+  const duplicate = await addBookFromSearch({
+    ...base,
+    title: "Gruffalo",
+    authors: ["Julia Donaldson"],
+    isbn: null,
+  });
+  expect(duplicate).toMatchObject({ status: "possible_duplicate" });
+  expect(fixture.tables.books).toHaveLength(1);
+  expect(
+    await addBookFromSearch(
+      { ...base, title: "Gruffalo", authors: ["Julia Donaldson"], isbn: null },
+      { action: "keep_both" },
+    ),
+  ).toMatchObject({ status: "added", book: { familyId: "family", title: "Gruffalo" } });
+  expect(fixture.tables.books.at(-1)).toMatchObject({
+    family_id: "family",
+    title: "Gruffalo",
+    authors: ["Julia Donaldson"],
+  });
+  await addBookFromSearch({ ...base, title: "Room on the Broom", isbn: "0803726066" });
+  expect(fixture.tables.books.at(-1)).toMatchObject({
+    isbn: "9780803726062",
+    normalized_isbn: "9780803726062",
+  });
+});
+
+it("sends calendar requests for every night the cascade RPC changed", async () => {
+  fixture.tables.families = [{ id: "family", name: "Family" }];
+  fixture.tables.reading_sessions = ["a", "b", "extra"].map((id) => ({
+    id,
+    family_id: "family",
+    schedule_id: "schedule",
+    scheduled_for: "2026-10-06T19:30:00+00:00",
+    status: "scheduled",
+    ics_uid: id,
+  }));
+  fixture.tables.session_assignments = ["a", "b", "extra"].map((id) => ({
+    id: `asg-${id}`,
+    session_id: id,
+    member_id: "reader",
+    is_current: true,
+  }));
+  fixture.changes = ["a", "b", "extra"] as unknown as Row[];
+  expect(
+    await cascadeInsertReader({ fromSessionId: "a", fillInMemberId: "reader" }),
+  ).toEqual({ changedSessionIds: ["a", "b"], extraSessionId: "extra" });
+  expect(
+    vi.mocked(sendSessionInviteEmail).mock.calls.map(([invite]) => invite.icsUid),
+  ).toEqual(["a", "b", "extra"]);
 });

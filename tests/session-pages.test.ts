@@ -15,6 +15,9 @@ vi.mock("@/lib/data", () => ({
   getCurrentMember: store.getCurrentMember,
   getFamilyAdmin: store.getFamilyAdmin,
   getFamilySessionPage: store.getFamilySessionPage,
+  getUpcomingBookCtaState: store.getUpcomingBookCtaState,
+  listFamilyAssignments: store.listFamilyAssignments,
+  listFamilySessions: store.listFamilySessions,
   getHomeContext: store.getHomeContext,
 }));
 import SchedulePage from "@/app/schedule/page";

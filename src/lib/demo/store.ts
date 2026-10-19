@@ -29,8 +29,9 @@ import {
   checkForDuplicate,
   mergeKeptBook,
   storedIsbnKey,
+  type AddBookResolution,
+  type AddBookResult,
   type BookInput,
-  type TitleDuplicateCandidate,
 } from "@/lib/domain/book-duplicates";
 import { computeDashboardStats } from "@/lib/domain/stats";
 import { birthdayFromAge, parseBirthday } from "@/lib/domain/kids";
@@ -524,19 +525,7 @@ export function addKid(name: string, birthdayRaw: string): Kid {
   return kid;
 }
 
-export type AddBookResolution =
-  | { action: "keep_both" }
-  | { action: "replace"; existingBookId: string };
-
-export type AddBookResult =
-  | { status: "added"; book: Book }
-  | { status: "already_in_library"; existing: Book }
-  | {
-      status: "possible_duplicate";
-      incoming: BookInput;
-      candidates: TitleDuplicateCandidate[];
-    }
-  | { status: "replaced"; book: Book };
+export type { AddBookResolution, AddBookResult };
 
 /**
  * Same barcode always keeps the earlier book. Same title (and author) asks the

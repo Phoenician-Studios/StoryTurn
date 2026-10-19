@@ -5,7 +5,22 @@ import { assertScheduleSettings } from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
+import {
+  checkForDuplicate,
+  mergeKeptBook,
+  storedIsbnKey,
+  type AddBookResolution,
+  type AddBookResult,
+  type BookInput,
+} from "@/lib/domain/book-duplicates";
 import { generateInviteCode } from "@/lib/domain/invites";
+import { normalizeToIsbn13 } from "@/lib/isbn";
+import {
+  SESSION_BOOK_PICK_COUNT,
+  sessionHasLibraryBooks,
+} from "@/lib/domain/session-books";
+import { DEFAULT_FAMILY_TIMEZONE, formatDateOnlyInTimeZone } from "@/lib/domain/dates";
+import type { ChildRelation } from "@/lib/domain/relations";
 import { addDays } from "@/lib/domain/rotation";
 import {
   assertTransition,
@@ -314,6 +329,57 @@ export async function listFamilyAssignments(): Promise<SessionAssignment[]> {
   );
 }
 
+export async function getUpcomingBookCtaState() {
+  const { supabase, member } = requireMember(await loadContext());
+  const [sessions, schedules, libraryCount] = await Promise.all([
+    familySessions(supabase, member.familyId),
+    rows(
+      supabase
+        .from("schedules")
+        .select("*")
+        .eq("family_id", member.familyId)
+        .eq("active", true),
+      mapSchedule,
+      "Could not load schedule",
+    ),
+    supabase
+      .from("books")
+      .select("id", { count: "exact", head: true })
+      .eq("family_id", member.familyId),
+  ]);
+  assertNoError(libraryCount.error, "Could not count library");
+  const today = formatDateOnlyInTimeZone(
+    new Date(),
+    schedules[0]?.timezone ?? DEFAULT_FAMILY_TIMEZONE,
+  );
+  const upcoming = sessions.filter(
+    (s) => s.status === "scheduled" && sessionDateKey(s.scheduledFor) >= today,
+  );
+  const sessionBooks =
+    upcoming.length === 0
+      ? []
+      : await rows(
+          supabase
+            .from("session_books")
+            .select("*")
+            .in(
+              "session_id",
+              upcoming.map((s) => s.id),
+            ),
+          mapSessionBook,
+          "Could not load session books",
+        );
+  const withBooksCount = upcoming.filter((s) =>
+    sessionHasLibraryBooks(sessionBooks, s.id),
+  ).length;
+  return {
+    libraryCount: libraryCount.count ?? 0,
+    upcomingCount: upcoming.length,
+    withoutBooksCount: upcoming.length - withBooksCount,
+    withBooksCount,
+  };
+}
+
 export async function getLibrary(): Promise<Book[]> {
   const { supabase, member } = requireMember(await loadContext());
   return rows(
@@ -526,13 +592,17 @@ export async function ensureAllUpcomingSessions(daysAhead = 14): Promise<number>
   return insertGeneratedSessions(supabase, schedules, daysAhead);
 }
 
-export async function createFamily(name: string): Promise<void> {
+export async function createFamily(
+  name: string,
+  relation: ChildRelation = "parent",
+): Promise<void> {
   const ctx = await loadContext();
   if (!ctx.account) throw new Error("Not signed in");
   if (ctx.member) throw new Error("Already in a family");
   const { error } = await ctx.supabase.rpc("create_family", {
     family_name: name.trim(),
     display_name: ctx.account.displayName,
+    relation,
   });
   assertNoError(error, "Could not create family");
 
@@ -550,13 +620,17 @@ export async function createFamily(name: string): Promise<void> {
   assertNoError(inviteError, "Could not create the first invite code");
 }
 
-export async function joinFamily(codeRaw: string): Promise<void> {
+export async function joinFamily(
+  codeRaw: string,
+  relation: ChildRelation = "other",
+): Promise<void> {
   const ctx = await loadContext();
   if (!ctx.account) throw new Error("Not signed in");
   if (ctx.member) throw new Error("Already in a family");
   const { error } = await ctx.supabase.rpc("join_family", {
     raw_code: codeRaw,
     display_name: ctx.account.displayName,
+    relation,
   });
   assertNoError(error, "Could not join family");
 }
@@ -819,6 +893,19 @@ export async function updateMember(
   assertNoError(error, "Could not update reader");
 }
 
+export async function updateMemberRelation(
+  memberId: string,
+  relationToChildren: ChildRelation,
+): Promise<void> {
+  const { supabase, member } = requireMember(await loadContext());
+  requireOwner(member);
+  const { error } = await supabase.rpc("update_family_member_relation", {
+    target_id: memberId,
+    new_relation: relationToChildren,
+  });
+  assertNoError(error, "Could not update relation");
+}
+
 export async function updateKid(
   kidId: string,
   name: string,
@@ -981,6 +1068,133 @@ export async function correctBookFormat(id: string, format: string) {
   });
   assertNoError(error, "Could not update format");
 }
+export async function cascadeInsertReader(input: {
+  fromSessionId: string;
+  fillInMemberId: string;
+}): Promise<{ changedSessionIds: string[]; extraSessionId: string }> {
+  const { supabase, member } = requireMember(await loadContext());
+  requireOwner(member);
+  const { data, error } = await supabase.rpc("cascade_insert_reader", {
+    from_session_id: input.fromSessionId,
+    fill_in_member_id: input.fillInMemberId,
+    book_count: SESSION_BOOK_PICK_COUNT,
+  });
+  assertNoError(error, "Could not shift readers");
+  const sessionIds = ((data ?? []) as unknown[]).map(String);
+  for (const sessionId of sessionIds) await sendInvite(supabase, sessionId, "REQUEST");
+  return {
+    changedSessionIds: sessionIds.slice(0, -1),
+    extraSessionId: sessionIds.at(-1)!,
+  };
+}
+
+export async function swapSessionReaders(input: {
+  sessionAId: string;
+  sessionBId: string;
+}): Promise<void> {
+  const { supabase, member } = requireMember(await loadContext());
+  requireOwner(member);
+  const { error } = await supabase.rpc("swap_session_readers", {
+    session_a_id: input.sessionAId,
+    session_b_id: input.sessionBId,
+  });
+  assertNoError(error, "Could not swap readers");
+  await sendInvite(supabase, input.sessionAId, "REQUEST");
+  await sendInvite(supabase, input.sessionBId, "REQUEST");
+}
+
+async function pickUpcomingSessionBooks(args: {
+  target_session_id?: string;
+  only_empty?: boolean;
+}): Promise<number> {
+  const { supabase } = requireMember(await loadContext());
+  const { data, error } = await supabase.rpc("pick_upcoming_session_books", {
+    ...args,
+    book_count: SESSION_BOOK_PICK_COUNT,
+  });
+  assertNoError(error, "Could not pick books");
+  return Number(data ?? 0);
+}
+
+export async function addRandomBooksToUpcomingSessions(): Promise<number> {
+  return pickUpcomingSessionBooks({ only_empty: true });
+}
+
+export async function shuffleBooksForUpcomingSessions(): Promise<number> {
+  return pickUpcomingSessionBooks({});
+}
+
+export async function shuffleSessionBooks(sessionId: string): Promise<void> {
+  await pickUpcomingSessionBooks({ target_session_id: sessionId });
+}
+
+function bookColumns(input: BookInput): Row {
+  return {
+    title: input.title,
+    authors: input.authors,
+    open_library_key: input.openLibraryKey,
+    cover_url: input.coverUrl,
+    isbn: input.isbn,
+    normalized_isbn: input.isbn ? normalizeToIsbn13(input.isbn) : null,
+  };
+}
+
+export async function addBookFromSearch(
+  input: BookInput,
+  resolution?: AddBookResolution,
+): Promise<AddBookResult> {
+  const { supabase, member } = requireMember(await loadContext());
+  const title = input.title.trim();
+  if (!title) throw new Error("Book title is required");
+  const incoming: BookInput = { ...input, title, isbn: storedIsbnKey(input.isbn) };
+  const loadLibrary = () =>
+    rows(
+      supabase.from("books").select("*").eq("family_id", member.familyId),
+      mapBook,
+      "Could not load library",
+    );
+  const check = checkForDuplicate(await loadLibrary(), incoming);
+
+  if (check.kind === "same_isbn") {
+    return { status: "already_in_library", existing: check.existing };
+  }
+
+  if (check.kind === "same_title") {
+    if (resolution?.action === "replace") {
+      const target = check.candidates.find(
+        (c) => c.existing.id === resolution.existingBookId,
+      )?.existing;
+      if (!target) throw new Error("That book is no longer a match in your library");
+      const { data, error } = await supabase
+        .from("books")
+        .update(bookColumns(mergeKeptBook(incoming, target)))
+        .eq("id", target.id)
+        .eq("family_id", member.familyId)
+        .select("*")
+        .single();
+      assertNoError(error, "Could not replace book");
+      return { status: "replaced", book: mapBook(data as Row) };
+    }
+    if (resolution?.action !== "keep_both") {
+      return { status: "possible_duplicate", incoming, candidates: check.candidates };
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("books")
+    .insert({ family_id: member.familyId, ...bookColumns(incoming) })
+    .select("*")
+    .single();
+  if (error && "code" in error && error.code === "23505") {
+    const raced = checkForDuplicate(await loadLibrary(), incoming);
+    if (raced.kind === "same_isbn") {
+      return { status: "already_in_library", existing: raced.existing };
+    }
+  }
+  assertNoError(error, "Could not add book");
+  return { status: "added", book: mapBook(data as Row) };
+}
+
 export async function reserveBookLookup() {
   const { supabase } = requireMember(await loadContext());
   const { data, error } = await supabase.rpc("reserve_book_lookup");

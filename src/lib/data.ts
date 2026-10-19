@@ -1,4 +1,10 @@
 import type { SessionStatus } from "@/lib/types";
+import type { ChildRelation } from "@/lib/domain/relations";
+import type {
+  AddBookResolution,
+  AddBookResult,
+  BookInput,
+} from "@/lib/domain/book-duplicates";
 import { isDemoMode } from "@/lib/config";
 import * as demo from "@/lib/demo/store";
 import * as live from "@/lib/supabase/repository";
@@ -42,12 +48,14 @@ export async function getSessionDetail(sessionId: string, selectedLibraryOnly = 
     : live.getSessionDetail(sessionId, selectedLibraryOnly);
 }
 
-export async function createFamily(name: string) {
-  return isDemoMode() ? demo.createFamily(name) : live.createFamily(name);
+export async function createFamily(name: string, relation?: ChildRelation) {
+  return isDemoMode()
+    ? demo.createFamily(name, relation)
+    : live.createFamily(name, relation);
 }
 
-export async function joinFamily(code: string) {
-  return isDemoMode() ? demo.joinFamily(code) : live.joinFamily(code);
+export async function joinFamily(code: string, relation?: ChildRelation) {
+  return isDemoMode() ? demo.joinFamily(code, relation) : live.joinFamily(code, relation);
 }
 
 export async function addKid(name: string, birthday: string) {
@@ -103,6 +111,51 @@ export async function updateMember(id: string, name: string, role: "owner" | "re
   return isDemoMode()
     ? demo.updateMember(id, name, role)
     : live.updateMember(id, name, role);
+}
+export async function updateMemberRelation(
+  memberId: string,
+  relationToChildren: ChildRelation,
+) {
+  return isDemoMode()
+    ? demo.updateMemberRelation(memberId, relationToChildren)
+    : live.updateMemberRelation(memberId, relationToChildren);
+}
+export async function cascadeInsertReader(input: {
+  fromSessionId: string;
+  fillInMemberId: string;
+}) {
+  return isDemoMode() ? demo.cascadeInsertReader(input) : live.cascadeInsertReader(input);
+}
+export async function swapSessionReaders(input: {
+  sessionAId: string;
+  sessionBId: string;
+}) {
+  return isDemoMode() ? demo.swapSessionReaders(input) : live.swapSessionReaders(input);
+}
+export async function getUpcomingBookCtaState() {
+  return isDemoMode() ? demo.getUpcomingBookCtaState() : live.getUpcomingBookCtaState();
+}
+export async function addRandomBooksToUpcomingSessions() {
+  return isDemoMode()
+    ? demo.addRandomBooksToUpcomingSessions()
+    : live.addRandomBooksToUpcomingSessions();
+}
+export async function shuffleBooksForUpcomingSessions() {
+  return isDemoMode()
+    ? demo.shuffleBooksForUpcomingSessions()
+    : live.shuffleBooksForUpcomingSessions();
+}
+export async function shuffleSessionBooks(sessionId: string) {
+  if (isDemoMode()) demo.shuffleSessionBooks(sessionId);
+  else await live.shuffleSessionBooks(sessionId);
+}
+export async function addBookFromSearch(
+  input: BookInput,
+  resolution?: AddBookResolution,
+): Promise<AddBookResult> {
+  return isDemoMode()
+    ? demo.addBookFromSearch(input, resolution)
+    : live.addBookFromSearch(input, resolution);
 }
 export async function updateKid(id: string, name: string, birthday: string) {
   return isDemoMode()

@@ -21,7 +21,7 @@ import type {
   DuplicateKeep,
   TitleDuplicateCandidate,
 } from "@/lib/domain/book-duplicates";
-import type { AddBookResolution, AddBookResult } from "@/lib/demo/store";
+import type { AddBookResolution, AddBookResult } from "@/lib/domain/book-duplicates";
 import type { BookSearchResult } from "@/lib/open-library";
 
 interface PendingDuplicate {
