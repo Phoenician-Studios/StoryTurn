@@ -81,24 +81,27 @@ export function LibraryCollection({ books }: { books: Book[] }) {
   const [message, setMessage] = useState("");
   return (
     <>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button
-          variant="destructive"
-          disabled={!selected.length}
-          onClick={() => setOpen(true)}
-        >
-          Remove selected ({selected.length})
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => setSelected(books.slice(0, 100).map((b) => b.id))}
-        >
-          Select up to 100
-        </Button>
-        <Button variant="outline" onClick={() => setSelected([])}>
-          Clear selection
-        </Button>
-      </div>
+      {books.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {selected.length ? (
+            <>
+              <Button variant="destructive" onClick={() => setOpen(true)}>
+                Remove selected ({selected.length})
+              </Button>
+              <Button variant="outline" onClick={() => setSelected([])}>
+                Clear selection
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setSelected(books.slice(0, 100).map((b) => b.id))}
+            >
+              {books.length > 100 ? "Select first 100" : "Select all"}
+            </Button>
+          )}
+        </div>
+      )}
       {message && (
         <p role="status" className="mt-3">
           {message}

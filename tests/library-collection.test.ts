@@ -48,7 +48,7 @@ it("requires confirmation for bulk removal and explains books retained for histo
     { id: "two", status: "referenced" },
   ]);
   render(createElement(LibraryCollection, { books }));
-  fireEvent.click(screen.getByRole("button", { name: "Select up to 100" }));
+  fireEvent.click(screen.getByRole("button", { name: "Select all" }));
   fireEvent.click(screen.getByRole("button", { name: "Remove selected (2)" }));
   expect(removeBooksAction).not.toHaveBeenCalled();
   fireEvent.click(await screen.findByRole("button", { name: "Remove books" }));
