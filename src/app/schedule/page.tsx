@@ -1,5 +1,6 @@
 import Form from "next/form";
 import { NativeSelect } from "@/components/ui/native-select";
+import { AutoSubmitSelect } from "@/components/auto-submit-select";
 import { sessionStatusFilter } from "@/lib/domain/session-presentation";
 import { ConfirmationForm } from "@/components/confirmation-form";
 import { BackLink } from "@/components/back-link";
@@ -327,7 +328,7 @@ export default async function SchedulePage({
             <Form action="/schedule" scroll={false} className="flex items-center gap-2">
               <Label htmlFor="session-status">Status</Label>
               <div className="w-40">
-                <NativeSelect
+                <AutoSubmitSelect
                   key={status ?? "all"}
                   id="session-status"
                   name="status"
@@ -337,11 +338,13 @@ export default async function SchedulePage({
                   <option value="scheduled">Scheduled</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
-                </NativeSelect>
+                </AutoSubmitSelect>
               </div>
-              <Button type="submit" variant="outline">
-                Apply
-              </Button>
+              <noscript>
+                <Button type="submit" variant="outline">
+                  Apply
+                </Button>
+              </noscript>
             </Form>
           </div>
           <ul className="mt-4 space-y-2">
