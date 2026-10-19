@@ -6,15 +6,17 @@ import { BackLink } from "@/components/back-link";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import {
-  addRandomBooksToUpcomingAction,
   cascadeInsertAction,
   deleteScheduleAction,
   saveScheduleAction,
-  shuffleUpcomingBooksAction,
   swapSessionsAction,
 } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { ToastForm } from "@/components/toast-form";
+import {
+  AddRandomBooksForm,
+  ShuffleUpcomingBooksForm,
+} from "@/components/upcoming-books-forms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -194,40 +196,8 @@ export default async function SchedulePage({
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              {bookCta.withoutBooksCount > 0 && (
-                <ToastForm
-                  action={addRandomBooksToUpcomingAction}
-                  successMessage={(result) => {
-                    const updated =
-                      result &&
-                      typeof result === "object" &&
-                      "updated" in result
-                        ? Number((result as { updated: number }).updated)
-                        : 0;
-                    return `Added books to ${updated} night${updated === 1 ? "" : "s"}`;
-                  }}
-                >
-                  <Button type="submit">Add random books to upcoming nights</Button>
-                </ToastForm>
-              )}
-              {bookCta.withBooksCount > 0 && (
-                <ToastForm
-                  action={shuffleUpcomingBooksAction}
-                  successMessage={(result) => {
-                    const updated =
-                      result &&
-                      typeof result === "object" &&
-                      "updated" in result
-                        ? Number((result as { updated: number }).updated)
-                        : 0;
-                    return `Shuffled books on ${updated} night${updated === 1 ? "" : "s"}`;
-                  }}
-                >
-                  <Button type="submit" variant="secondary">
-                    Shuffle books for all upcoming nights
-                  </Button>
-                </ToastForm>
-              )}
+              {bookCta.withoutBooksCount > 0 && <AddRandomBooksForm />}
+              {bookCta.withBooksCount > 0 && <ShuffleUpcomingBooksForm />}
             </div>
           </section>
         )}
