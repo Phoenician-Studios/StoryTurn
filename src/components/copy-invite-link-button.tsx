@@ -12,7 +12,6 @@ export function CopyInviteLinkButton({ code }: { code: string }) {
   return (
     <Button
       type="button"
-      size="sm"
       variant="outline"
       onClick={async () => {
         try {

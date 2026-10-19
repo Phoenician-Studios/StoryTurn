@@ -60,7 +60,7 @@ function BookCover({ coverUrl, label }: { coverUrl: string | null; label: string
     // eslint-disable-next-line @next/next/no-img-element
     <img src={coverUrl} alt="" className="h-16 w-12 rounded object-cover" />
   ) : (
-    <div className="flex h-16 w-12 items-center justify-center rounded bg-secondary text-xs text-muted-foreground">
+    <div className="flex h-16 w-12 items-center justify-center rounded bg-secondary px-1 text-center text-xs leading-tight text-muted-foreground">
       {label}
     </div>
   );
@@ -231,14 +231,16 @@ export function BookSearch({ collectionKeys }: { collectionKeys: string[] }) {
         Google Books when configured, then Open Library.
       </p>
       {pending && (
-        <p role="status" className="text-sm text-muted-foreground">Searching…</p>
+        <p role="status" className="text-sm text-muted-foreground">
+          Searching…
+        </p>
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
       <ul className="grid items-start gap-2 lg:grid-cols-2">
         {results.map((book) => (
           <li
             key={book.sourceId}
-            className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 rounded-xl border border-border/80 bg-card/70 px-3 py-2 sm:grid-cols-[2.5rem_minmax(0,1fr)_auto]"
+            className="grid grid-cols-[3rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 rounded-xl border border-border/80 bg-card/70 p-3 sm:grid-cols-[3rem_minmax(0,1fr)_auto]"
           >
             <div className="contents">
               <BookCover coverUrl={book.coverUrl} label="No cover" />
