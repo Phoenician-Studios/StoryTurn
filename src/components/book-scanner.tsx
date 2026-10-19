@@ -500,7 +500,7 @@ export function BookScanner() {
             failed scans will be cleared. Undo will end.
           </DialogDescription>
           <Button
-            variant="outline"
+            variant="cancel"
             disabled={finishing}
             onClick={() => {
               afterClose.current = null;

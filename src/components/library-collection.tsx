@@ -88,7 +88,7 @@ export function LibraryCollection({ books }: { books: Book[] }) {
               <Button variant="destructive" onClick={() => setOpen(true)}>
                 Remove selected ({selected.length})
               </Button>
-              <Button variant="outline" onClick={() => setSelected([])}>
+              <Button variant="cancel" onClick={() => setSelected([])}>
                 Clear selection
               </Button>
             </>
@@ -161,7 +161,7 @@ export function LibraryCollection({ books }: { books: Book[] }) {
             This removes books from the shared family library. Books used in reading
             sessions will be kept to preserve your history.
           </DialogDescription>
-          <Button variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+          <Button variant="cancel" disabled={pending} onClick={() => setOpen(false)}>
             Keep books
           </Button>
           <Button

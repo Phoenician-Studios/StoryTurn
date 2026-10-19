@@ -60,7 +60,7 @@ export function ConfirmationForm({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="cancel" onClick={() => setOpen(false)}>
               Go back
             </Button>
             <Button
