@@ -58,20 +58,30 @@ export function BookEditions({
         </Button>
       )}
       {expanded && loaded && !editions.length && (
-        <p>No editions found. Try the ISBN scanner.</p>
+        <p className="text-sm text-muted-foreground">
+          No editions found. Try the ISBN scanner.
+        </p>
       )}
       {expanded &&
         editions.map((edition) => {
           const collected = [...collectionKeys, ...added].includes(edition.editionKey);
           return (
-            <div key={edition.editionKey} className="space-y-2 rounded border p-2">
-              <p>{edition.title}</p>
-              {editionLabel(edition) && (
-                <p className="text-sm text-muted-foreground">{editionLabel(edition)}</p>
-              )}
+            <div
+              key={edition.editionKey}
+              className="flex items-center justify-between gap-3 rounded-lg border border-border/80 bg-card px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium break-words">{edition.title}</p>
+                {editionLabel(edition) && (
+                  <p className="text-xs text-muted-foreground break-words">
+                    {editionLabel(edition)}
+                  </p>
+                )}
+              </div>
               <Button
                 size="sm"
                 variant="secondary"
+                className="shrink-0"
                 disabled={collected || !!pending}
                 onClick={async () => {
                   setPending(edition.editionKey);
@@ -107,7 +117,11 @@ export function BookEditions({
           More editions
         </Button>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
