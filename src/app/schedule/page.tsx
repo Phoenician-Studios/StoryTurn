@@ -77,10 +77,7 @@ export default async function SchedulePage({
   const readerLabel = (sessionId: string) =>
     [...assignments, ...listFamilyAssignments()]
       .filter((a) => a.sessionId === sessionId && a.isCurrent)
-      .filter(
-        (a, index, all) =>
-          all.findIndex((row) => row.id === a.id) === index,
-      )
+      .filter((a, index, all) => all.findIndex((row) => row.id === a.id) === index)
       .map((a) => names[a.memberId] ?? "Reader")
       .join(", ");
 
@@ -190,9 +187,9 @@ export default async function SchedulePage({
             <div>
               <h2 className="font-display text-xl">Bedtime books</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                New nights get {SESSION_BOOK_PICK_COUNT} random library books automatically.
-                Use these when you want to fill empty nights or reshuffle picks across the
-                schedule.
+                New nights get {SESSION_BOOK_PICK_COUNT} random library books
+                automatically. Use these when you want to fill empty nights or reshuffle
+                picks across the schedule.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -218,10 +215,9 @@ export default async function SchedulePage({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fromSessionId">Starting night</Label>
-                <select
+                <NativeSelect
                   id="fromSessionId"
                   name="fromSessionId"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
                   required
                   defaultValue={futureScheduled[0]?.id}
                 >
@@ -231,14 +227,13 @@ export default async function SchedulePage({
                       {readerLabel(session.id)}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fillInMemberId">Fill-in reader</Label>
-                <select
+                <NativeSelect
                   id="fillInMemberId"
                   name="fillInMemberId"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
                   required
                   defaultValue={
                     admin.readers.find((r) => r.relationToChildren === "grandparent")
@@ -247,10 +242,11 @@ export default async function SchedulePage({
                 >
                   {admin.readers.map((reader) => (
                     <option key={reader.id} value={reader.id}>
-                      {reader.displayName} ({childRelationLabel(reader.relationToChildren)})
+                      {reader.displayName} (
+                      {childRelationLabel(reader.relationToChildren)})
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <Button type="submit">Cascade forward</Button>
             </ToastForm>
@@ -269,10 +265,9 @@ export default async function SchedulePage({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sessionAId">First night</Label>
-                <select
+                <NativeSelect
                   id="sessionAId"
                   name="sessionAId"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
                   required
                   defaultValue={futureScheduled[0]?.id}
                 >
@@ -282,14 +277,13 @@ export default async function SchedulePage({
                       {readerLabel(session.id)}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sessionBId">Second night</Label>
-                <select
+                <NativeSelect
                   id="sessionBId"
                   name="sessionBId"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
                   required
                   defaultValue={futureScheduled[1]?.id ?? futureScheduled[0]?.id}
                 >
@@ -299,9 +293,11 @@ export default async function SchedulePage({
                       {readerLabel(session.id)}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
-              <Button type="submit" variant="secondary">Swap readers</Button>
+              <Button type="submit" variant="secondary">
+                Swap readers
+              </Button>
             </ToastForm>
           </div>
         )}
@@ -312,9 +308,9 @@ export default async function SchedulePage({
             description="Future nights from this schedule and their calendar invitations will be canceled."
             confirmLabel="Delete schedule"
             action={deleteScheduleAction}
-            className="mt-4"
+            className="story-panel mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5"
           >
-            <p className="mb-2 text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Deleting the schedule cancels its upcoming nights and keeps reading history.
             </p>
             <Button type="submit" variant="destructive">
@@ -341,7 +337,7 @@ export default async function SchedulePage({
                   <option value="cancelled">Cancelled</option>
                 </NativeSelect>
               </div>
-              <Button type="submit" variant="outline" size="sm">
+              <Button type="submit" variant="outline">
                 Apply
               </Button>
             </Form>
