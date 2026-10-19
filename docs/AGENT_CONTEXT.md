@@ -25,6 +25,8 @@ Session `scheduledFor` values are **family-local wall times** (date + bedtime), 
 - Parse shelf scans with `parseScannedBookCode` (clear invalid-check-digit vs unsupported messages; Bookland UPC allowed).
 - Normalize scanned UPC/EAN/ISBN-10 to ISBN-13 before provider calls.
 - When a code lookup succeeds but the provider omits `isbn`, **backfill from the normalized query code** so the family library stores what was scanned.
+- Shelf-scan Google fallback must **prefer the validated scanned ISBN** over provider `industryIdentifiers` (Google may return `OTHER` / non-barcode values).
+- Provider/pacing failures during shelf scan must surface as `kind: "lookup"` (retry), never as `kind: "unknown"` / “No ISBN match”.
 - Shelf scan should try Open Library then Google Books. Set `GOOGLE_BOOKS_API_KEY` in deployed envs — many kids’ books are missing from Open Library by ISBN.
 - Mute ZXing `MultiFormatReader: non-ReaderException` warnings while the camera is live (empty-frame noise, not lookup failures).
 

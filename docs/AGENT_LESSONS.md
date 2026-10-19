@@ -182,3 +182,19 @@ Durable lessons from PR review and production misses. `/start` loads `AGENT_CONT
 - **Going forward:** On code/barcode lookup success, if the provider omits ISBN, backfill from the normalized query ISBN (same as Open Library’s ISBN mapper).
 - **Pointers:** `src/lib/book-search.ts` `lookupBookByCode`
 - **Promoted:** AGENT_CONTEXT.md → ISBN / barcode lookup
+
+### 2026-10-19 — Do not mask shelf-scan provider failures as misses
+
+- **Source:** PR #27 · Bugbot
+- **Gap:** `lookupScanEdition` swallowed Open Library / Google / pacing errors and returned `null`, so `scanBookAction` always showed “No ISBN match” for transient outages.
+- **Going forward:** Only return a miss when a provider successfully responds with no match. Provider or pacing failures must throw so the action returns `kind: "lookup"`.
+- **Pointers:** `src/app/book-actions.ts` `lookupScanEdition`, `tests/scan-book-action.test.ts`
+- **Promoted:** AGENT_CONTEXT.md → ISBN / barcode lookup
+
+### 2026-10-19 — Prefer scanned ISBN over Google identifiers on shelf scan
+
+- **Source:** PR #27 · Bugbot
+- **Gap:** Google fallback saved `hit.isbn` ahead of the validated barcode, so volumes with `OTHER` industry identifiers could store a non-barcode value.
+- **Going forward:** Shelf-scan Google hits always persist the `parseScannedBookCode` ISBN-13, not provider identifier metadata.
+- **Pointers:** `src/app/book-actions.ts` `lookupScanEdition`, `tests/scan-book-action.test.ts`
+- **Promoted:** AGENT_CONTEXT.md → ISBN / barcode lookup

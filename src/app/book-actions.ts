@@ -28,14 +28,20 @@ async function authorize() {
 const options = { beforeRequest: reserveBookLookup };
 
 async function lookupScanEdition(isbn: string): Promise<BookInput | null> {
+  let openLibraryFailed = false;
   try {
     const ol = await lookupIsbn(isbn, options);
     if (ol) return ol;
   } catch {
-    // Fall through to Google Books when configured.
+    // Fall through to Google Books when configured; do not treat
+    // provider/pacing failures as a definitive ISBN miss.
+    openLibraryFailed = true;
   }
 
-  if (!isGoogleBooksConfigured()) return null;
+  if (!isGoogleBooksConfigured()) {
+    if (openLibraryFailed) throw new Error("Lookup unavailable");
+    return null;
+  }
 
   try {
     await reserveBookLookup();
@@ -50,7 +56,9 @@ async function lookupScanEdition(isbn: string): Promise<BookInput | null> {
       authors: hit.authors,
       openLibraryKey: null,
       coverUrl: hit.coverUrl,
-      isbn: hit.isbn ?? isbn,
+      // Prefer the validated scanned barcode over provider identifiers
+      // (Google may surface OTHER / non-barcode values).
+      isbn,
       editionKey: hit.googleBooksId
         ? `google:${hit.googleBooksId}`
         : `isbn:${isbn}`,
@@ -59,7 +67,7 @@ async function lookupScanEdition(isbn: string): Promise<BookInput | null> {
       editionYear: hit.year ? String(hit.year) : null,
     };
   } catch {
-    return null;
+    throw new Error("Lookup unavailable");
   }
 }
 
