@@ -5,12 +5,14 @@ import { FormSelect } from "@/components/form-select";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import {
-  cancelSessionAction,
   reactivateSessionAction,
+  shuffleSessionBooksAction,
   updateSessionAction,
 } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
+import { CancelSessionForm } from "@/components/cancel-session-form";
 import { SessionBookPicker } from "@/components/session-book-picker";
+import { ToastForm } from "@/components/toast-form";
 import { Badge } from "@/components/ui/badge";
 import { SessionStatusBadge } from "@/components/session-status";
 import { Button } from "@/components/ui/button";
@@ -21,9 +23,14 @@ import {
   originalReaderLabels,
   wasCorrected,
 } from "@/lib/domain/corrections";
+import {
+  DEFAULT_FAMILY_TIMEZONE,
+  formatRelativeInstant,
+  formatRelativeSessionWhen,
+} from "@/lib/domain/dates";
+import { SESSION_BOOK_PICK_COUNT } from "@/lib/domain/session-books";
 import { isPastSession } from "@/lib/domain/sessions";
-import { formatSessionDate } from "@/lib/domain/session-presentation";
-import { getCurrentMember, getCurrentUser, getSessionDetail } from "@/lib/data";
+import { getCurrentMember, getCurrentUser, getFamilyAdmin, getSessionDetail } from "@/lib/data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default async function SessionPage({
@@ -39,6 +46,8 @@ export default async function SessionPage({
   const { id } = await params;
   const detail = await getSessionDetail(id, true);
   if (!detail) redirect("/");
+  const admin = await getFamilyAdmin();
+  const timeZone = admin?.schedule?.timezone ?? DEFAULT_FAMILY_TIMEZONE;
 
   const corrected = wasCorrected({
     assignments: detail.assignments,
@@ -89,8 +98,9 @@ export default async function SessionPage({
             )}
           </div>
           <h1 className="font-display mt-3 text-3xl text-primary">
-            {formatSessionDate(detail.session.scheduledFor)} ·{" "}
-            {detail.session.scheduledFor.slice(11, 16)}
+            {formatRelativeSessionWhen(detail.session.scheduledFor, {
+              timeZone,
+            })}
           </h1>
           <p className="mt-2 text-muted-foreground">
             Current reader:{" "}
@@ -123,18 +133,31 @@ export default async function SessionPage({
               <div key={c.id} className="story-panel rounded-xl p-4 text-sm">
                 <p className="font-medium">{c.reason}</p>
                 <p className="mt-1 text-muted-foreground">
-                  {formatSessionDate(c.createdAt)} ·{" "}
-                  {new Date(c.createdAt).toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                    timeZone: "UTC",
-                  })}{" "}
-                  UTC
+                  {formatRelativeInstant(c.createdAt, timeZone)}
                 </p>
               </div>
             ))}
           </section>
         )}
+
+        {detail.library.length > 0 &&
+          detail.session.status === "scheduled" &&
+          !past && (
+            <ToastForm
+              action={shuffleSessionBooksAction}
+              successMessage={`Picked ${Math.min(SESSION_BOOK_PICK_COUNT, detail.library.length)} new books`}
+              className="story-panel mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5"
+            >
+              <div>
+                <h2 className="font-display text-xl">Shuffle tonight&apos;s books</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Replace the library picks on this night with a fresh random set.
+                </p>
+              </div>
+              <input type="hidden" name="sessionId" value={id} />
+              <Button type="submit" variant="secondary">Shuffle books</Button>
+            </ToastForm>
+          )}
 
         <ConfirmationForm
           title={
@@ -272,20 +295,7 @@ export default async function SessionPage({
         </ConfirmationForm>
 
         {detail.session.status !== "cancelled" && (
-          <ConfirmationForm
-            title="Cancel this session?"
-            description="This night will be marked as canceled and its calendar invite will be canceled."
-            confirmLabel="Cancel session"
-            action={async () => {
-              "use server";
-              await cancelSessionAction(id);
-            }}
-            className="mt-4"
-          >
-            <Button type="submit" variant="destructive">
-              Cancel this reading session
-            </Button>
-          </ConfirmationForm>
+          <CancelSessionForm sessionId={id} />
         )}
       </main>
     </div>

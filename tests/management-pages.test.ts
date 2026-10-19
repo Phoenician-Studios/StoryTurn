@@ -7,8 +7,13 @@ vi.mock("@/app/actions", () => ({
   addKidAction: vi.fn(),
   createInviteAction: vi.fn(),
   updateMemberAction: vi.fn(),
+  updateMemberRelationAction: vi.fn(),
   updateKidAction: vi.fn(),
   deleteKidAction: vi.fn(),
+  addRandomBooksToUpcomingAction: vi.fn(),
+  shuffleUpcomingBooksAction: vi.fn(),
+  cascadeInsertAction: vi.fn(),
+  swapSessionsAction: vi.fn(),
 }));
 vi.mock("@/components/app-nav", () => ({ AppNav: () => null }));
 vi.mock("@/lib/data", () => ({

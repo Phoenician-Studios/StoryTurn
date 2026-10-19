@@ -4,6 +4,10 @@ import * as store from "@/lib/demo/store";
 vi.mock("@/app/actions", () => ({
   saveScheduleAction: vi.fn(),
   deleteScheduleAction: vi.fn(),
+  addRandomBooksToUpcomingAction: vi.fn(),
+  shuffleUpcomingBooksAction: vi.fn(),
+  cascadeInsertAction: vi.fn(),
+  swapSessionsAction: vi.fn(),
 }));
 vi.mock("@/components/app-nav", () => ({ AppNav: () => null }));
 vi.mock("@/lib/data", () => ({

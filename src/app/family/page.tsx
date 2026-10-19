@@ -4,18 +4,25 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import {
   addKidAction,
-  createInviteAction,
   updateMemberAction,
   updateKidAction,
   deleteKidAction,
+  updateMemberRelationAction,
 } from "@/app/actions";
-import { CopyInviteLink } from "@/components/copy-invite-link";
 import { AppNav } from "@/components/app-nav";
+import { CopyInviteLinkButton } from "@/components/copy-invite-link-button";
+import { CreateInviteForm } from "@/components/create-invite-form";
+import { RelationSelect } from "@/components/relation-select";
+import { ToastForm } from "@/components/toast-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCurrentMember, getCurrentUser, getFamilyAdmin } from "@/lib/data";
+import { ageFromBirthday, formatBirthdayLabel } from "@/lib/domain/kids";
+import { childRelationLabel } from "@/lib/domain/relations";
+import { invitePath } from "@/lib/domain/invites";
+import { appUrl } from "@/lib/config";
 
 export default async function FamilyPage({
   searchParams,
@@ -29,6 +36,7 @@ export default async function FamilyPage({
   if (!member) redirect("/onboarding");
   const admin = await getFamilyAdmin();
   if (!admin) redirect("/onboarding");
+  const isOwner = member.role === "owner";
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -56,7 +64,7 @@ export default async function FamilyPage({
         <div className="mt-6 grid items-start gap-6 xl:grid-cols-2">
           <section className="story-panel rounded-2xl p-5 animate-rise-delay">
             <h2 className="font-display text-xl">Readers</h2>
-            <ul className="mt-4 space-y-2">
+            <ul className="mt-4 space-y-3">
               {admin.readers.map((reader) => (
                 <li
                   key={reader.id}
@@ -67,53 +75,75 @@ export default async function FamilyPage({
                     <p className="break-all text-sm text-muted-foreground">
                       {reader.email}
                     </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {childRelationLabel(reader.relationToChildren)} to the kids
+                    </p>
                   </div>
-                  {member.role === "owner" ? (
-                    <form
-                      action={updateMemberAction}
-                      className="grid w-full min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]"
-                    >
-                      <input type="hidden" name="id" value={reader.id} />
-                      <label className="min-w-0 space-y-2 text-sm">
-                        Name
-                        <Input
-                          name="name"
-                          aria-label={`Name for ${reader.displayName}`}
-                          defaultValue={reader.displayName}
-                          required
-                          className="text-base sm:text-sm"
-                        />
-                      </label>
-                      {reader.id === member.id ? (
-                        <div className="text-sm">
-                          <span>Access</span>
-                          <p className="flex h-8 items-center text-muted-foreground">
-                            Parent (you)
-                          </p>
-                          <input type="hidden" name="role" value={reader.role} />
-                        </div>
-                      ) : (
+                  {isOwner ? (
+                    <>
+                      <form
+                        action={updateMemberAction}
+                        className="grid w-full min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]"
+                      >
+                        <input type="hidden" name="id" value={reader.id} />
                         <label className="min-w-0 space-y-2 text-sm">
-                          Access
-                          <FormSelect
-                            name="role"
-                            aria-label={`Access for ${reader.displayName}`}
-                            defaultValue={reader.role}
-                            options={[
-                              { value: "owner", label: "Parent (can manage family)" },
-                              { value: "reader", label: "Reader" },
-                            ]}
+                          Name
+                          <Input
+                            name="name"
+                            aria-label={`Name for ${reader.displayName}`}
+                            defaultValue={reader.displayName}
+                            required
+                            className="text-base sm:text-sm"
                           />
                         </label>
-                      )}
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        className="w-full self-end sm:w-auto"
+                        {reader.id === member.id ? (
+                          <div className="text-sm">
+                            <span>Access</span>
+                            <p className="flex h-8 items-center text-muted-foreground">
+                              Parent (you)
+                            </p>
+                            <input type="hidden" name="role" value={reader.role} />
+                          </div>
+                        ) : (
+                          <label className="min-w-0 space-y-2 text-sm">
+                            Access
+                            <FormSelect
+                              name="role"
+                              aria-label={`Access for ${reader.displayName}`}
+                              defaultValue={reader.role}
+                              options={[
+                                { value: "owner", label: "Parent (can manage family)" },
+                                { value: "reader", label: "Reader" },
+                              ]}
+                            />
+                          </label>
+                        )}
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          className="w-full self-end sm:w-auto"
+                        >
+                          Save reader
+                        </Button>
+                      </form>
+                      <ToastForm
+                        action={updateMemberRelationAction}
+                        successMessage="Relation updated"
+                        className="flex flex-wrap items-end gap-2"
                       >
-                        Save reader
-                      </Button>
-                    </form>
+                        <input type="hidden" name="memberId" value={reader.id} />
+                        <div className="min-w-[10rem] flex-1">
+                          <RelationSelect
+                            id={`relation-${reader.id}`}
+                            defaultValue={reader.relationToChildren}
+                            label="Relation"
+                          />
+                        </div>
+                        <Button type="submit" size="sm" variant="secondary">
+                          Save relation
+                        </Button>
+                      </ToastForm>
+                    </>
                   ) : (
                     <Badge variant="outline">
                       {reader.role === "owner" ? "Parent" : "Reader"}
@@ -132,7 +162,7 @@ export default async function FamilyPage({
                   key={kid.id}
                   className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2"
                 >
-                  {member.role === "owner" ? (
+                  {isOwner ? (
                     <form
                       action={updateKidAction}
                       className="flex flex-wrap items-end gap-2"
@@ -148,16 +178,14 @@ export default async function FamilyPage({
                         />
                       </label>
                       <label className="text-sm">
-                        Age
+                        Birthday
                         <Input
-                          name="age"
-                          aria-label={`Age for ${kid.name}`}
-                          type="number"
-                          min={0}
-                          max={18}
-                          defaultValue={kid.age}
+                          name="birthday"
+                          aria-label={`Birthday for ${kid.name}`}
+                          type="date"
+                          defaultValue={kid.birthday}
                           required
-                          className="w-20"
+                          className="w-36"
                         />
                       </label>
                       <Button type="submit" variant="outline">
@@ -174,29 +202,31 @@ export default async function FamilyPage({
                     </form>
                   ) : (
                     <span>
-                      {kid.name} · Age {kid.age}
+                      {kid.name} · {formatBirthdayLabel(kid.birthday)} ·{" "}
+                      {ageFromBirthday(kid.birthday)} yrs
                     </span>
                   )}
                 </li>
               ))}
             </ul>
-            {member.role === "owner" ? (
-              <form
+            {isOwner ? (
+              <ToastForm
                 action={addKidAction}
-                className="mt-4 grid gap-3 sm:grid-cols-[1fr_5rem_auto]"
+                successMessage="Kid added"
+                className="mt-4 grid gap-3 sm:grid-cols-[1fr_10rem_auto]"
               >
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
                   <Input id="name" name="name" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="age">Age</Label>
-                  <Input id="age" name="age" type="number" min={0} max={18} required />
+                  <Label htmlFor="birthday">Birthday</Label>
+                  <Input id="birthday" name="birthday" type="date" required />
                 </div>
                 <div className="flex items-end">
                   <Button type="submit">Add</Button>
                 </div>
-              </form>
+              </ToastForm>
             ) : (
               <p className="mt-4 text-sm text-muted-foreground">
                 Family owners can add kids.
@@ -210,49 +240,38 @@ export default async function FamilyPage({
             <div>
               <h2 className="font-display text-xl">Invite codes</h2>
               <p className="text-sm text-muted-foreground">
-                Share a code so another parent or caregiver can join. Parents can manage
-                the family and schedule.
+                Share an invite link so another parent or caregiver can join. New readers
+                can skip re-entering the code after sign up.
               </p>
             </div>
-            {member.role === "owner" && (
-              <form
-                action={createInviteAction}
-                className="flex flex-wrap items-end gap-2"
-              >
-                <label className="text-sm">
-                  Invite as
-                  <FormSelect
-                    name="role"
-                    defaultValue="reader"
-                    aria-label="Invite as"
-                    options={[
-                      { value: "reader", label: "Reader" },
-                      { value: "owner", label: "Parent (can manage family)" },
-                    ]}
-                  />
-                </label>
-                <Button type="submit" variant="secondary">
-                  Generate code
-                </Button>
-              </form>
-            )}
+            {isOwner && <CreateInviteForm />}
           </div>
           <ul className="mt-4 space-y-2">
-            {admin.invites.map((invite) => (
-              <li
-                key={invite.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
-              >
-                <code className="font-mono text-sm tracking-wider">{invite.code}</code>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground">
-                    {invite.role === "owner" ? "Parent" : "Reader"} · {invite.uses}
-                    {invite.maxUses !== null ? ` / ${invite.maxUses}` : ""} uses
-                  </span>
-                  <CopyInviteLink code={invite.code} />
-                </div>
-              </li>
-            ))}
+            {admin.invites.map((inviteRow) => {
+              const path = invitePath(inviteRow.code);
+              const href = `${appUrl()}${path}`;
+              return (
+                <li
+                  key={inviteRow.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <code className="font-mono text-sm tracking-wider">
+                      {inviteRow.code}
+                    </code>
+                    <p className="truncate text-xs text-muted-foreground">{href}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {inviteRow.role === "owner" ? "Parent" : "Reader"} ·{" "}
+                      {inviteRow.uses}
+                      {inviteRow.maxUses !== null ? ` / ${inviteRow.maxUses}` : ""} uses
+                    </span>
+                    <CopyInviteLinkButton code={inviteRow.code} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </section>
       </main>

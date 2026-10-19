@@ -108,9 +108,11 @@ it("preserves referenced books and legacy identity while removing unreferenced s
     night,
     existing.book.id,
   ]);
+  // Legacy row without edition identity; use a distinct ISBN so it does not
+  // collide with books_family_isbn_unique from the duplicate-detection migration.
   const legacy = (
     await db.query<{ id: string }>(
-      "insert into books(family_id,title,authors,isbn) values($1,'Legacy','{}','9780060775858') returning id",
+      "insert into books(family_id,title,authors,isbn) values($1,'Legacy','{}','9780000000002') returning id",
       [family],
     )
   ).rows[0].id;

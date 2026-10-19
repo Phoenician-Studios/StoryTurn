@@ -2,22 +2,43 @@ import { BrandLogo } from "@/components/brand-logo";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { googleLoginAction, loginAction, switchDemoUserAction } from "@/app/actions";
+import {
+  googleLoginAction,
+  loginAction,
+  switchDemoUserAction,
+} from "@/app/actions";
+import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isDemoMode } from "@/lib/config";
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentMember, getCurrentUser } from "@/lib/data";
+import { findInviteByCode, joinFamily } from "@/lib/demo/store";
+import { normalizeInviteCode } from "@/lib/domain/invites";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; notice?: string }>;
+  searchParams: Promise<{ error?: string; notice?: string; invite?: string }>;
 }) {
-  const user = await getCurrentUser();
-  if (user) redirect("/");
   const params = await searchParams;
   const demo = isDemoMode();
+  const inviteCode = params.invite ? normalizeInviteCode(params.invite) : null;
+  const matched = inviteCode ? findInviteByCode(inviteCode) : null;
+  const usableInvite = matched?.usable.ok ? matched.code : null;
+  const familyName = matched?.usable.ok ? (matched.family?.name ?? null) : null;
+
+  const user = await getCurrentUser();
+  if (user) {
+    if (demo && usableInvite && !(await getCurrentMember())) {
+      try {
+        joinFamily(usableInvite);
+      } catch {
+        redirect("/onboarding");
+      }
+    }
+    redirect((await getCurrentMember()) ? "/" : "/onboarding");
+  }
 
   return (
     <main className="relative mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col justify-center px-4 py-12">
@@ -38,9 +59,11 @@ export default async function LoginPage({
         <section className="story-panel animate-rise-delay rounded-2xl p-6">
           <h2 className="font-display text-2xl text-foreground">Sign in</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {demo
-              ? "Demo mode is on. Use a sample account or any email."
-              : "Use your email and password, or continue with Google."}
+            {familyName
+              ? `Sign in to join ${familyName}. You'll skip the invite code step.`
+              : demo
+                ? "Demo mode is on. Use a sample account or any email."
+                : "Use your email and password, or continue with Google."}
           </p>
           {params.error && (
             <p className="mt-3 text-sm text-destructive">{params.error}</p>
@@ -48,33 +71,56 @@ export default async function LoginPage({
           {params.notice && (
             <p className="mt-3 text-sm text-muted-foreground">{params.notice}</p>
           )}
-          <form action={loginAction} className="mt-5 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                placeholder="alex@example.com"
-                defaultValue={demo ? "alex@example.com" : undefined}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required={!demo}
-                placeholder={demo ? "demo" : ""}
-                defaultValue={demo ? "demo" : undefined}
-              />
-            </div>
-            <Button type="submit" className="w-full animate-glow">
-              Continue
-            </Button>
-          </form>
+          {demo ? (
+            <ToastForm
+              action={loginAction}
+              successMessage="Signed in"
+              redirects
+              className="mt-5 space-y-4"
+            >
+              {usableInvite ? (
+                <input type="hidden" name="invite" value={usableInvite} />
+              ) : null}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="alex@example.com"
+                  defaultValue={familyName ? "" : "alex@example.com"}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="demo"
+                  defaultValue={familyName ? "" : "demo"}
+                />
+              </div>
+              <Button type="submit" className="w-full animate-glow">
+                Continue
+              </Button>
+            </ToastForm>
+          ) : (
+            <form action={loginAction} className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" name="email" type="email" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" name="password" type="password" required />
+              </div>
+              <Button type="submit" className="w-full animate-glow">
+                Continue
+              </Button>
+            </form>
+          )}
 
           {!demo && (
             <form action={googleLoginAction} className="mt-3">
@@ -84,7 +130,7 @@ export default async function LoginPage({
             </form>
           )}
 
-          {demo && (
+          {demo && !familyName && (
             <div className="mt-6 space-y-2">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Quick demo users
@@ -95,27 +141,40 @@ export default async function LoginPage({
                   ["jordan@example.com", "Jordan"],
                   ["nana@example.com", "Nana"],
                 ].map(([email, label]) => (
-                  <form key={email} action={switchDemoUserAction}>
+                  <ToastForm
+                    key={email}
+                    action={switchDemoUserAction}
+                    successMessage={`Signed in as ${label}`}
+                    redirects
+                  >
                     <input type="hidden" name="email" value={email} />
                     <Button type="submit" variant="secondary" size="sm">
                       {label}
                     </Button>
-                  </form>
+                  </ToastForm>
                 ))}
               </div>
             </div>
           )}
 
           <p className="mt-6 text-sm text-muted-foreground">
+            {!demo && (
+              <>
+                <Link
+                  href="/reset-password"
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  Forgot password
+                </Link>
+                {" · "}
+              </>
+            )}
             <Link
-              href="/reset-password"
-              className="text-primary underline-offset-2 hover:underline"
-            >
-              Forgot password
-            </Link>
-            {" · "}
-            <Link
-              href="/signup"
+              href={
+                usableInvite
+                  ? `/signup?invite=${encodeURIComponent(usableInvite)}`
+                  : "/signup"
+              }
               className="text-primary underline-offset-2 hover:underline"
             >
               Create account

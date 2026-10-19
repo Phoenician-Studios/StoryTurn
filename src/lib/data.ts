@@ -50,8 +50,8 @@ export async function joinFamily(code: string) {
   return isDemoMode() ? demo.joinFamily(code) : live.joinFamily(code);
 }
 
-export async function addKid(name: string, age: number) {
-  return isDemoMode() ? demo.addKid(name, age) : live.addKid(name, age);
+export async function addKid(name: string, birthday: string) {
+  return isDemoMode() ? demo.addKid(name, birthday) : live.addKid(name, birthday);
 }
 
 export async function createInviteCode(role: "owner" | "reader" = "reader") {
@@ -104,8 +104,10 @@ export async function updateMember(id: string, name: string, role: "owner" | "re
     ? demo.updateMember(id, name, role)
     : live.updateMember(id, name, role);
 }
-export async function updateKid(id: string, name: string, age: number) {
-  return isDemoMode() ? demo.updateKid(id, name, age) : live.updateKid(id, name, age);
+export async function updateKid(id: string, name: string, birthday: string) {
+  return isDemoMode()
+    ? demo.updateKid(id, name, birthday)
+    : live.updateKid(id, name, birthday);
 }
 export async function deleteKid(id: string) {
   return isDemoMode() ? demo.deleteKid(id) : live.deleteKid(id);

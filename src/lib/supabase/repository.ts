@@ -561,15 +561,16 @@ export async function joinFamily(codeRaw: string): Promise<void> {
   assertNoError(error, "Could not join family");
 }
 
-export async function addKid(name: string, age: number): Promise<void> {
+export async function addKid(name: string, birthday: string): Promise<void> {
   const { supabase, member } = requireMember(await loadContext());
   requireOwner(member);
-  if (!name.trim() || !Number.isInteger(age) || age < 0 || age > 18)
-    throw new Error("Enter a name and age from 0 to 18");
+  const { parseBirthday } = await import("@/lib/domain/kids");
+  const parsed = parseBirthday(birthday);
+  if (!name.trim()) throw new Error("Enter a name and birthday");
   const { error } = await supabase.from("kids").insert({
     family_id: member.familyId,
     name: name.trim(),
-    age,
+    birthday: parsed,
   });
   assertNoError(error, "Could not add kid");
 }
@@ -818,14 +819,19 @@ export async function updateMember(
   assertNoError(error, "Could not update reader");
 }
 
-export async function updateKid(kidId: string, name: string, age: number): Promise<void> {
+export async function updateKid(
+  kidId: string,
+  name: string,
+  birthday: string,
+): Promise<void> {
   const { supabase, member } = requireMember(await loadContext());
   requireOwner(member);
-  if (!name.trim() || !Number.isInteger(age) || age < 0 || age > 18)
-    throw new Error("Enter a name and age from 0 to 18");
+  const { parseBirthday } = await import("@/lib/domain/kids");
+  const parsed = parseBirthday(birthday);
+  if (!name.trim()) throw new Error("Enter a name and birthday");
   const { data, error } = await supabase
     .from("kids")
-    .update({ name: name.trim(), age })
+    .update({ name: name.trim(), birthday: parsed })
     .eq("id", kidId)
     .eq("family_id", member.familyId)
     .select("id");

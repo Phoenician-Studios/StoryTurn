@@ -2,20 +2,46 @@ import { ConfirmationForm } from "@/components/confirmation-form";
 import { BrandLogo } from "@/components/brand-logo";
 import { ArrowLeft } from "lucide-react";
 export const dynamic = "force-dynamic";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createFamilyAction, joinFamilyAction, logoutAction } from "@/app/actions";
+import {
+  createFamilyAction,
+  joinFamilyAction,
+  logoutAction,
+} from "@/app/actions";
+import { RelationSelect } from "@/components/relation-select";
+import { ToastForm } from "@/components/toast-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { findInviteByCode, joinFamily } from "@/lib/demo/store";
 import { getCurrentMember, getCurrentUser } from "@/lib/data";
+import { normalizeInviteCode } from "@/lib/domain/invites";
+import { peekPendingInvite } from "@/lib/pending-invite";
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (await getCurrentMember()) redirect("/");
 
-  const inviteCode = (await cookies()).get("storyturn-invite")?.value;
+  const params = await searchParams;
+  const fromQuery = params.invite ? normalizeInviteCode(params.invite) : null;
+  const pendingCode = fromQuery ?? (await peekPendingInvite());
+
+  if (pendingCode) {
+    try {
+      joinFamily(pendingCode);
+      redirect("/invite/consumed");
+    } catch {
+      // Fall through to the manual join form.
+    }
+  }
+
+  const matched = pendingCode ? findInviteByCode(pendingCode) : null;
+  const defaultCode = matched?.usable.ok ? matched.code : (pendingCode ?? "");
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-12">
@@ -39,20 +65,25 @@ export default async function OnboardingPage() {
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <form
+        <ToastForm
           action={createFamilyAction}
-          className="story-panel animate-rise rounded-2xl p-5 space-y-4"
+          successMessage="Family created"
+          redirects
+          className="story-panel animate-rise space-y-4 rounded-2xl p-5"
         >
           <h2 className="font-display text-xl">Create a family</h2>
           <div className="space-y-2">
             <Label htmlFor="name">Family name</Label>
             <Input id="name" name="name" placeholder="The Riveras" required />
           </div>
+          <RelationSelect defaultValue="parent" id="create-relation" />
           <Button type="submit">Create family</Button>
-        </form>
-        <form
+        </ToastForm>
+        <ToastForm
           action={joinFamilyAction}
-          className="story-panel animate-rise-delay rounded-2xl p-5 space-y-4"
+          successMessage="Joined family"
+          redirects
+          className="story-panel animate-rise-delay space-y-4 rounded-2xl p-5"
         >
           <h2 className="font-display text-xl">Join with invite</h2>
           <div className="space-y-2">
@@ -61,14 +92,15 @@ export default async function OnboardingPage() {
               id="code"
               name="code"
               placeholder="RIVERA24"
-              defaultValue={inviteCode}
               required
+              defaultValue={defaultCode}
             />
           </div>
+          <RelationSelect defaultValue="other" id="join-relation" />
           <Button type="submit" variant="secondary">
             Join family
           </Button>
-        </form>
+        </ToastForm>
       </div>
     </main>
   );
