@@ -5,6 +5,7 @@ import {
   looksLikeBookCode,
   normalizeIsbn,
   normalizeToIsbn13,
+  parseScannedBookCode,
 } from "@/lib/isbn";
 
 describe("normalizeIsbn (strict bookland)", () => {
@@ -12,15 +13,32 @@ describe("normalizeIsbn (strict bookland)", () => {
     expect(normalizeIsbn("0-06-077585-8")).toBe("9780060775858");
     expect(normalizeIsbn("080442957X")).toBe("9780804429573");
     expect(normalizeIsbn("9780060775858")).toBe("9780060775858");
+    expect(normalizeIsbn("ISBN: 9780060775858")).toBe("9780060775858");
+    expect(normalizeIsbn("978006077585")).toBe("9780060775858");
     for (const value of [
       "9780060775859",
       "0060775859",
       "12345",
       "012345678905",
       "4006381333931",
-      "ISBN: 9780060775858",
+      "9781524794301",
     ])
       expect(normalizeIsbn(value)).toBeNull();
+  });
+
+  it("distinguishes bad check digits from unsupported formats", () => {
+    expect(parseScannedBookCode("9781524794301")).toEqual({
+      ok: false,
+      reason: "invalid_check_digit",
+    });
+    expect(parseScannedBookCode("9781524793401")).toEqual({
+      ok: true,
+      isbn13: "9781524793401",
+    });
+    expect(parseScannedBookCode("4006381333931")).toEqual({
+      ok: false,
+      reason: "unsupported",
+    });
   });
 });
 

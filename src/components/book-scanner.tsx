@@ -8,7 +8,10 @@ import {
   scanBookAction,
   removeBooksAction,
 } from "@/app/book-actions";
-import { normalizeIsbn } from "@/lib/isbn";
+import {
+  parseScannedBookCode,
+  scannedBookCodeMessage,
+} from "@/lib/isbn";
 import { editionLabel, type BookInput } from "@/lib/book-edition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +29,29 @@ type Row = {
   undoable?: boolean;
   retryable?: boolean;
 };
+
+const ZXING_NOISE = /MultiFormatReader: non-ReaderException/;
+let zxingWarnPatched = false;
+let zxingWarnOriginal: typeof console.warn | null = null;
+
+function patchZxingWarnings() {
+  if (zxingWarnPatched) return;
+  zxingWarnOriginal = console.warn;
+  console.warn = (...args: unknown[]) => {
+    const first = args[0];
+    if (typeof first === "string" && ZXING_NOISE.test(first)) return;
+    zxingWarnOriginal?.apply(console, args as Parameters<typeof console.warn>);
+  };
+  zxingWarnPatched = true;
+}
+
+function unpatchZxingWarnings() {
+  if (!zxingWarnPatched || !zxingWarnOriginal) return;
+  console.warn = zxingWarnOriginal;
+  zxingWarnOriginal = null;
+  zxingWarnPatched = false;
+}
+
 export function BookScanner() {
   const [session, setSession] = useState<string | null>(null);
   const sessionRef = useRef<string | null>(null);
@@ -55,6 +81,7 @@ export function BookScanner() {
     controls.current = null;
     stream.current?.getTracks().forEach((track) => track.stop());
     stream.current = null;
+    unpatchZxingWarnings();
     if (mounted.current) {
       setCamera(false);
       setCameraStarting(false);
@@ -96,11 +123,12 @@ export function BookScanner() {
   }
   function capture(value: string, retry = false) {
     if (leaving.current || !sessionRef.current) return;
-    const code = normalizeIsbn(value);
-    if (!code) {
-      setMessage("Unsupported barcode. Use the book’s ISBN-10 or ISBN-13.");
+    const parsed = parseScannedBookCode(value);
+    if (!parsed.ok) {
+      setMessage(scannedBookCodeMessage(parsed.reason));
       return;
     }
+    const code = parsed.isbn13;
     if (seen.current.has(code) && !retry) return;
     if (queue.current.length >= 5) {
       setMessage("Lookup queue is full. Wait for a book to finish, then scan again.");
@@ -146,6 +174,7 @@ export function BookScanner() {
         return;
       }
       stream.current = media;
+      patchZxingWarnings();
       const reader = new BrowserMultiFormatReader(
         new Map([[DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13]]]),
         { delayBetweenScanAttempts: 250, delayBetweenScanSuccess: 750 },

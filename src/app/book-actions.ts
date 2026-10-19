@@ -12,12 +12,57 @@ import {
   correctBookFormat,
 } from "@/lib/data";
 import { getWorkEditions, lookupEdition, lookupIsbn } from "@/lib/open-library";
-import { normalizeIsbn } from "@/lib/isbn";
+import {
+  isGoogleBooksConfigured,
+  lookupGoogleBooksByIsbn,
+} from "@/lib/google-books";
+import {
+  parseScannedBookCode,
+  scannedBookCodeMessage,
+} from "@/lib/isbn";
+import type { BookInput } from "@/lib/book-edition";
 
 async function authorize() {
   if (!(await getCurrentMember())) throw new Error("Join a family first");
 }
 const options = { beforeRequest: reserveBookLookup };
+
+async function lookupScanEdition(isbn: string): Promise<BookInput | null> {
+  try {
+    const ol = await lookupIsbn(isbn, options);
+    if (ol) return ol;
+  } catch {
+    // Fall through to Google Books when configured.
+  }
+
+  if (!isGoogleBooksConfigured()) return null;
+
+  try {
+    await reserveBookLookup();
+    const google = await lookupGoogleBooksByIsbn(isbn, {
+      limit: 1,
+      apiKey: process.env.GOOGLE_BOOKS_API_KEY?.trim() || null,
+    });
+    const hit = google[0];
+    if (!hit) return null;
+    return {
+      title: hit.title,
+      authors: hit.authors,
+      openLibraryKey: null,
+      coverUrl: hit.coverUrl,
+      isbn: hit.isbn ?? isbn,
+      editionKey: hit.googleBooksId
+        ? `google:${hit.googleBooksId}`
+        : `isbn:${isbn}`,
+      format: null,
+      publisher: null,
+      editionYear: hit.year ? String(hit.year) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function startScanAction() {
   await authorize();
   return startBookScan();
@@ -30,16 +75,17 @@ export async function finishScanAction(id: string) {
 export async function scanBookAction(value: string, sessionId: string) {
   await authorize();
   z.string().uuid().parse(sessionId);
-  const isbn = normalizeIsbn(value);
-  if (!isbn)
+  const parsed = parseScannedBookCode(value);
+  if (!parsed.ok)
     return {
       ok: false as const,
-      error: "Unsupported code. Enter a valid ISBN-10 or ISBN-13.",
+      error: scannedBookCodeMessage(parsed.reason),
       kind: "invalid" as const,
     };
-  let edition;
+  const isbn = parsed.isbn13;
+  let edition: BookInput | null;
   try {
-    edition = await lookupIsbn(isbn, options);
+    edition = await lookupScanEdition(isbn);
   } catch {
     return {
       ok: false as const,
@@ -50,7 +96,9 @@ export async function scanBookAction(value: string, sessionId: string) {
   if (!edition)
     return {
       ok: false as const,
-      error: "No ISBN match. Try title search.",
+      error: isGoogleBooksConfigured()
+        ? "No ISBN match. Try title search."
+        : "No ISBN match. Set GOOGLE_BOOKS_API_KEY for better barcode coverage, or try title search.",
       kind: "unknown" as const,
     };
   try {
