@@ -21,7 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCurrentMember, getCurrentUser, getFamilyAdmin } from "@/lib/data";
 import { ageFromBirthday, formatBirthdayLabel } from "@/lib/domain/kids";
-import { childRelationLabel } from "@/lib/domain/relations";
 import { invitePath } from "@/lib/domain/invites";
 import { appUrl } from "@/lib/config";
 
@@ -76,18 +75,16 @@ export default async function FamilyPage({
                     <p className="break-all text-sm text-muted-foreground">
                       {reader.email}
                     </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {childRelationLabel(reader.relationToChildren)} to the kids
-                    </p>
                   </div>
                   {isOwner ? (
                     <ToastForm
                       action={updateMemberAction}
                       successMessage="Reader saved"
+                      resetOnSuccess={false}
                       className="grid w-full min-w-0 items-end gap-3 sm:grid-cols-2"
                     >
                       <input type="hidden" name="id" value={reader.id} />
-                      <label className="grid min-w-0 gap-2 text-sm">
+                      <label className="grid min-w-0 gap-1 text-sm">
                         <span className="font-medium">Name</span>
                         <Input
                           name="name"
@@ -98,7 +95,7 @@ export default async function FamilyPage({
                         />
                       </label>
                       {reader.id === member.id ? (
-                        <div className="grid gap-2 text-sm">
+                        <div className="grid gap-1 text-sm">
                           <span className="font-medium">Access</span>
                           <p className="flex h-8 items-center text-muted-foreground">
                             Parent (you)
@@ -106,7 +103,7 @@ export default async function FamilyPage({
                           <input type="hidden" name="role" value={reader.role} />
                         </div>
                       ) : (
-                        <label className="grid min-w-0 gap-2 text-sm">
+                        <label className="grid min-w-0 gap-1 text-sm">
                           <span className="font-medium">Access</span>
                           <FormSelect
                             name="role"
@@ -122,7 +119,6 @@ export default async function FamilyPage({
                       <RelationSelect
                         id={`relation-${reader.id}`}
                         defaultValue={reader.relationToChildren}
-                        label="Relation"
                       />
                       <Button
                         type="submit"
@@ -155,7 +151,7 @@ export default async function FamilyPage({
                         className="grid min-w-0 flex-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"
                       >
                         <input type="hidden" name="id" value={kid.id} />
-                        <label className="grid min-w-0 gap-2 text-sm">
+                        <label className="grid min-w-0 gap-1 text-sm">
                           <span className="font-medium">Name</span>
                           <Input
                             name="name"
@@ -164,7 +160,7 @@ export default async function FamilyPage({
                             required
                           />
                         </label>
-                        <label className="grid min-w-0 gap-2 text-sm">
+                        <label className="grid min-w-0 gap-1 text-sm">
                           <span className="font-medium">Birthday</span>
                           <Input
                             name="birthday"
@@ -212,11 +208,11 @@ export default async function FamilyPage({
                 successMessage="Kid added"
                 className="mt-4 grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"
               >
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="name">Name</Label>
                   <Input id="name" name="name" required />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="birthday">Birthday</Label>
                   <Input id="birthday" name="birthday" type="date" required />
                 </div>

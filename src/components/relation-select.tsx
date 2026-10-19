@@ -18,7 +18,7 @@ export function RelationSelect({
   label?: string;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <Label htmlFor={id}>{label}</Label>
       <NativeSelect id={id} name={name} defaultValue={defaultValue} required>
         {CHILD_RELATIONS.map((value) => (

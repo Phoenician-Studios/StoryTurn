@@ -14,6 +14,11 @@ type ToastFormProps = Omit<ComponentProps<"form">, "action"> & {
   errorMessage?: ToastMessage;
   /** Set when the server action calls `redirect()` so the toast survives navigation. */
   redirects?: boolean;
+  /**
+   * React 19 resets forms after a successful action. Set false when the submitted
+   * values should remain visible (e.g. an edit form that is not cleared).
+   */
+  resetOnSuccess?: boolean;
 };
 
 function resolveMessage(
@@ -28,6 +33,8 @@ export function ToastForm({
   successMessage,
   errorMessage = "Something went wrong",
   redirects = false,
+  resetOnSuccess = true,
+  onReset,
   children,
   ...formProps
 }: ToastFormProps) {
@@ -36,6 +43,12 @@ export function ToastForm({
   return (
     <form
       {...formProps}
+      onReset={(event) => {
+        if (!resetOnSuccess) {
+          event.preventDefault();
+        }
+        onReset?.(event);
+      }}
       action={async (formData) => {
         try {
           if (redirects) {
