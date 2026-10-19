@@ -199,15 +199,6 @@ export async function joinFamilyAction(formData: FormData) {
   redirect("/");
 }
 
-export async function updateMemberRelationAction(formData: FormData) {
-  await updateMemberRelation(
-    String(formData.get("memberId") ?? ""),
-    parseChildRelation(formData.get("relationToChildren")),
-  );
-  revalidatePath("/family");
-  revalidatePath("/schedule");
-}
-
 export async function cascadeInsertAction(formData: FormData) {
   await cascadeInsertReader({
     fromSessionId: String(formData.get("fromSessionId") ?? ""),
@@ -376,13 +367,16 @@ export async function deleteScheduleAction() {
 }
 
 export async function updateMemberAction(formData: FormData) {
+  const id = String(formData.get("id"));
   const role = String(formData.get("role"));
   if (role !== "owner" && role !== "reader") throw new Error("Invalid role");
-  await updateMember(
-    String(formData.get("id")),
-    String(formData.get("name") ?? ""),
-    role,
-  );
+  await updateMember(id, String(formData.get("name") ?? ""), role);
+  if (formData.has("relationToChildren")) {
+    await updateMemberRelation(
+      id,
+      parseChildRelation(formData.get("relationToChildren")),
+    );
+  }
   revalidatePath("/", "layout");
 }
 

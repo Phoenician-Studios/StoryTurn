@@ -7,8 +7,9 @@ import {
   updateMemberAction,
   updateKidAction,
   deleteKidAction,
-  updateMemberRelationAction,
 } from "@/app/actions";
+import { Trash2 } from "lucide-react";
+import { ConfirmationForm } from "@/components/confirmation-form";
 import { AppNav } from "@/components/app-nav";
 import { CopyInviteLinkButton } from "@/components/copy-invite-link-button";
 import { CreateInviteForm } from "@/components/create-invite-form";
@@ -80,64 +81,57 @@ export default async function FamilyPage({
                     </p>
                   </div>
                   {isOwner ? (
-                    <>
-                      <form
-                        action={updateMemberAction}
-                        className="grid w-full min-w-0 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_8rem]"
-                      >
-                        <input type="hidden" name="id" value={reader.id} />
+                    <ToastForm
+                      action={updateMemberAction}
+                      successMessage="Reader saved"
+                      className="grid w-full min-w-0 items-end gap-3 sm:grid-cols-2"
+                    >
+                      <input type="hidden" name="id" value={reader.id} />
+                      <label className="grid min-w-0 gap-2 text-sm">
+                        <span className="font-medium">Name</span>
+                        <Input
+                          name="name"
+                          aria-label={`Name for ${reader.displayName}`}
+                          defaultValue={reader.displayName}
+                          required
+                          className="text-base sm:text-sm"
+                        />
+                      </label>
+                      {reader.id === member.id ? (
+                        <div className="grid gap-2 text-sm">
+                          <span className="font-medium">Access</span>
+                          <p className="flex h-8 items-center text-muted-foreground">
+                            Parent (you)
+                          </p>
+                          <input type="hidden" name="role" value={reader.role} />
+                        </div>
+                      ) : (
                         <label className="grid min-w-0 gap-2 text-sm">
-                          <span className="font-medium">Name</span>
-                          <Input
-                            name="name"
-                            aria-label={`Name for ${reader.displayName}`}
-                            defaultValue={reader.displayName}
-                            required
-                            className="text-base sm:text-sm"
+                          <span className="font-medium">Access</span>
+                          <FormSelect
+                            name="role"
+                            aria-label={`Access for ${reader.displayName}`}
+                            defaultValue={reader.role}
+                            options={[
+                              { value: "owner", label: "Parent (can manage family)" },
+                              { value: "reader", label: "Reader" },
+                            ]}
                           />
                         </label>
-                        {reader.id === member.id ? (
-                          <div className="grid gap-2 text-sm">
-                            <span className="font-medium">Access</span>
-                            <p className="flex h-8 items-center text-muted-foreground">
-                              Parent (you)
-                            </p>
-                            <input type="hidden" name="role" value={reader.role} />
-                          </div>
-                        ) : (
-                          <label className="grid min-w-0 gap-2 text-sm">
-                            <span className="font-medium">Access</span>
-                            <FormSelect
-                              name="role"
-                              aria-label={`Access for ${reader.displayName}`}
-                              defaultValue={reader.role}
-                              options={[
-                                { value: "owner", label: "Parent (can manage family)" },
-                                { value: "reader", label: "Reader" },
-                              ]}
-                            />
-                          </label>
-                        )}
-                        <Button type="submit" variant="outline" className="w-full">
-                          Save reader
-                        </Button>
-                      </form>
-                      <ToastForm
-                        action={updateMemberRelationAction}
-                        successMessage="Relation updated"
-                        className="grid w-full min-w-0 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]"
+                      )}
+                      <RelationSelect
+                        id={`relation-${reader.id}`}
+                        defaultValue={reader.relationToChildren}
+                        label="Relation"
+                      />
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="w-full sm:w-auto sm:justify-self-end"
                       >
-                        <input type="hidden" name="memberId" value={reader.id} />
-                        <RelationSelect
-                          id={`relation-${reader.id}`}
-                          defaultValue={reader.relationToChildren}
-                          label="Relation"
-                        />
-                        <Button type="submit" variant="outline" className="w-full">
-                          Save relation
-                        </Button>
-                      </ToastForm>
-                    </>
+                        Save reader
+                      </Button>
+                    </ToastForm>
                   ) : (
                     <Badge variant="outline">
                       {reader.role === "owner" ? "Parent" : "Reader"}
@@ -154,9 +148,13 @@ export default async function FamilyPage({
               {admin.kids.map((kid) => (
                 <li key={kid.id} className="rounded-xl bg-secondary/50 p-4">
                   {isOwner ? (
-                    <form action={updateKidAction} className="grid gap-3">
-                      <input type="hidden" name="id" value={kid.id} />
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
+                    <div className="flex items-end gap-2">
+                      <ToastForm
+                        action={updateKidAction}
+                        successMessage="Child saved"
+                        className="grid min-w-0 flex-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"
+                      >
+                        <input type="hidden" name="id" value={kid.id} />
                         <label className="grid min-w-0 gap-2 text-sm">
                           <span className="font-medium">Name</span>
                           <Input
@@ -176,21 +174,29 @@ export default async function FamilyPage({
                             required
                           />
                         </label>
-                      </div>
-                      <div className="flex flex-wrap justify-end gap-2">
                         <Button type="submit" variant="outline">
-                          Save child
+                          Save
                         </Button>
+                      </ToastForm>
+                      <ConfirmationForm
+                        action={deleteKidAction}
+                        title={`Remove ${kid.name}?`}
+                        description="They will be removed from the family. Past reading history stays."
+                        confirmLabel="Remove child"
+                      >
+                        <input type="hidden" name="id" value={kid.id} />
                         <Button
                           type="submit"
-                          formAction={deleteKidAction}
-                          formNoValidate
-                          variant="destructive"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Remove child ${kid.name}`}
+                          title="Remove child"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
-                          Remove child
+                          <Trash2 aria-hidden="true" />
                         </Button>
-                      </div>
-                    </form>
+                      </ConfirmationForm>
+                    </div>
                   ) : (
                     <span>
                       {kid.name} · {formatBirthdayLabel(kid.birthday)} ·{" "}

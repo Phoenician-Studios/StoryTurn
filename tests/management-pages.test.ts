@@ -7,7 +7,6 @@ vi.mock("@/app/actions", () => ({
   addKidAction: vi.fn(),
   createInviteAction: vi.fn(),
   updateMemberAction: vi.fn(),
-  updateMemberRelationAction: vi.fn(),
   updateKidAction: vi.fn(),
   deleteKidAction: vi.fn(),
   addRandomBooksToUpcomingAction: vi.fn(),
@@ -46,8 +45,8 @@ it("offers parent invitations, reader editing, and child editing/removal", async
   expect(html).not.toContain('aria-label="Access for Alex"');
   expect(html).toContain('aria-label="Access for Jordan"');
   expect(html).toContain("Save reader");
-  expect(html).toContain("Save child");
-  expect(html).toContain("Remove child");
+  expect(html).not.toContain("Save relation");
+  expect(html).toContain('aria-label="Remove child Leo"');
 });
 it("hides management forms from readers", async () => {
   store.demoLogin("jordan@example.com");
@@ -59,6 +58,7 @@ it("hides management forms from readers", async () => {
   );
   expect(family).not.toContain("Save reader");
   expect(family).not.toContain("Remove child");
+  expect(family).not.toContain('name="relationToChildren"');
   expect(schedule).not.toContain("Delete schedule");
 });
 
