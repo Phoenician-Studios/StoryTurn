@@ -14,6 +14,7 @@ import {
   type BookInput,
 } from "@/lib/domain/book-duplicates";
 import { generateInviteCode } from "@/lib/domain/invites";
+import { normalizeToIsbn13 } from "@/lib/isbn";
 import {
   SESSION_BOOK_PICK_COUNT,
   sessionHasLibraryBooks,
@@ -1134,6 +1135,7 @@ function bookColumns(input: BookInput): Row {
     open_library_key: input.openLibraryKey,
     cover_url: input.coverUrl,
     isbn: input.isbn,
+    normalized_isbn: input.isbn ? normalizeToIsbn13(input.isbn) : null,
   };
 }
 

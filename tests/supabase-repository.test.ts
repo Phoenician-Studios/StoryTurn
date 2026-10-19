@@ -468,6 +468,11 @@ it("adds search results to the live library and reports barcode and title duplic
     title: "Gruffalo",
     authors: ["Julia Donaldson"],
   });
+  await addBookFromSearch({ ...base, title: "Room on the Broom", isbn: "0803726066" });
+  expect(fixture.tables.books.at(-1)).toMatchObject({
+    isbn: "9780803726062",
+    normalized_isbn: "9780803726062",
+  });
 });
 
 it("sends calendar requests for every night the cascade RPC changed", async () => {
