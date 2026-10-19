@@ -1,3 +1,4 @@
+import { parseChildRelation } from "@/lib/domain/relations";
 import type {
   Book,
   Family,
@@ -59,16 +60,21 @@ export function mapMember(row: Row): FamilyMember {
     displayName: str(row, "display_name"),
     email: str(row, "email"),
     role: role === "owner" ? "owner" : "reader",
+    relationToChildren: parseChildRelation(row.relation_to_children, "other"),
     createdAt: str(row, "created_at"),
   };
 }
 
 export function mapKid(row: Row): Kid {
+  const birthday =
+    typeof row.birthday === "string" && row.birthday
+      ? row.birthday.slice(0, 10)
+      : null;
   return {
     id: str(row, "id"),
     familyId: str(row, "family_id"),
     name: str(row, "name"),
-    age: Number(row.age ?? 0),
+    birthday: birthday ?? "2020-01-01",
     createdAt: str(row, "created_at"),
   };
 }

@@ -1,4 +1,8 @@
 import { applyReassignment } from "@/lib/domain/corrections";
+import {
+  pickRandomBookIds,
+  SESSION_BOOK_PICK_COUNT,
+} from "@/lib/domain/session-books";
 import { generateSessionsFromSchedule, sessionDateKey } from "@/lib/domain/sessions";
 import type { AppState } from "@/lib/types";
 import { addDays, formatDateOnly } from "@/lib/domain/rotation";
@@ -51,6 +55,7 @@ export function createSeedState(now = new Date()): AppState {
         displayName: "Alex",
         email: "alex@example.com",
         role: "owner",
+        relationToChildren: "parent",
         createdAt: `${startDate}T12:00:00.000Z`,
       },
       {
@@ -60,6 +65,7 @@ export function createSeedState(now = new Date()): AppState {
         displayName: "Jordan",
         email: "jordan@example.com",
         role: "reader",
+        relationToChildren: "parent",
         createdAt: `${startDate}T12:00:00.000Z`,
       },
       {
@@ -69,6 +75,7 @@ export function createSeedState(now = new Date()): AppState {
         displayName: "Nana",
         email: "nana@example.com",
         role: "reader",
+        relationToChildren: "grandparent",
         createdAt: `${startDate}T12:05:00.000Z`,
       },
     ],
@@ -77,14 +84,14 @@ export function createSeedState(now = new Date()): AppState {
         id: "kid_leo",
         familyId: "fam_demo",
         name: "Leo",
-        age: 6,
+        birthday: "2020-03-12",
         createdAt: `${startDate}T12:00:00.000Z`,
       },
       {
         id: "kid_mira",
         familyId: "fam_demo",
         name: "Mira",
-        age: 4,
+        birthday: "2022-08-04",
         createdAt: `${startDate}T12:00:00.000Z`,
       },
     ],
@@ -185,6 +192,8 @@ export function createSeedState(now = new Date()): AppState {
     });
   }
 
+  const libraryIds = state.books.map((b) => b.id);
+
   // Log a few past books
   const pastCompleted = state.sessions
     .filter((s) => s.status === "completed")
@@ -199,6 +208,20 @@ export function createSeedState(now = new Date()): AppState {
       createdAt: session.updatedAt,
     });
   });
+
+  // Pre-pick three library books for each upcoming night
+  for (const session of state.sessions.filter((s) => s.status === "scheduled")) {
+    const picked = pickRandomBookIds(libraryIds, SESSION_BOOK_PICK_COUNT);
+    for (const bookId of picked) {
+      state.sessionBooks.push({
+        id: `sb_${session.id}_${bookId}`,
+        sessionId: session.id,
+        bookId,
+        titleFreeform: null,
+        createdAt: session.createdAt,
+      });
+    }
+  }
 
   // One corrected past night: originally Alex, corrected to Nana
   const correctable = state.sessions.find(

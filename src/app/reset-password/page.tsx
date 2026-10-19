@@ -3,6 +3,7 @@ import { BackLink } from "@/components/back-link";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { resetPasswordAction } from "@/app/actions";
+import { ResetPasswordForm } from "@/components/reset-password-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,15 +36,19 @@ export default async function ResetPasswordPage({
               : "If that account exists, a reset link is on its way."}
           </p>
         )}
-        <form action={resetPasswordAction} className="mt-5 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required />
-          </div>
-          <Button type="submit" className="w-full">
-            Send reset link
-          </Button>
-        </form>
+        {demo ? (
+          <ResetPasswordForm />
+        ) : (
+          <form action={resetPasswordAction} className="mt-5 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" name="email" type="email" required />
+            </div>
+            <Button type="submit" className="w-full">
+              Send reset link
+            </Button>
+          </form>
+        )}
         <p className="mt-4 text-sm text-muted-foreground">
           <Link href="/login" className="text-primary hover:underline">
             Back to sign in

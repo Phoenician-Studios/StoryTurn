@@ -25,7 +25,7 @@ create table public.kids (
   id uuid primary key default gen_random_uuid(),
   family_id uuid not null references public.families (id) on delete cascade,
   name text not null,
-  age int not null check (age >= 0 and age < 21),
+  birthday date not null check (birthday <= current_date),
   avatar_url text,
   created_at timestamptz not null default now()
 );

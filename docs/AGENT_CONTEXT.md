@@ -1,0 +1,32 @@
+# Agent context
+
+Project rules for StoryTurn / bedtime-readers agents. Prefer this file over chat-only conventions.
+
+## Local development
+
+- Demo store is the default until Supabase credentials exist.
+- Do not commit secrets.
+- Optional `GOOGLE_BOOKS_API_KEY` enables Google-first ISBN/barcode and title search; without it, library search uses Open Library only.
+
+## Timezones for session calendar days
+
+Session `scheduledFor` values are **family-local wall times** (date + bedtime), not UTC instants.
+
+- When labeling or filtering “today / upcoming / past” nights, use the active schedule’s IANA `timezone` via `formatDateOnlyInTimeZone` / `getFamilyTimezone`.
+- Do **not** use UTC `formatDateOnly(new Date())` or `toISOString().slice(0, 10)` as “today” for bedtime UI or upcoming-session actions.
+
+## Corrections vs silent edits
+
+- Changing past or completed session assignments/books requires the correction audit path (`updateSession` with a reason).
+- Convenience actions (e.g. shuffle books) must only target **future scheduled** nights.
+
+## ISBN / barcode lookup
+
+- Normalize scanned UPC/EAN/ISBN-10 to ISBN-13 before provider calls.
+- When a code lookup succeeds but the provider omits `isbn`, **backfill from the normalized query code** so the family library stores what was scanned.
+
+## Library duplicates
+
+- Compare and store book barcodes via `storedIsbnKey` (`src/lib/domain/book-duplicates.ts`), never raw `isbn` strings: ISBN-10, ISBN-13, and UPC forms of one book must collide.
+- Same barcode in a family keeps the earlier book (no prompt). Same title + author with a different barcode prompts the user; recommend the copy with more metadata (cover first), ties keep the existing book.
+- "Replace" updates the existing row in place so `session_books` links keep their `book_id`, filling any field the new copy lacks from the existing book.

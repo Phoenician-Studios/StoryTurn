@@ -37,6 +37,7 @@ it("explains why existing members cannot join and clears the pending invite", as
     email: "reader@example.com",
     displayName: "Reader",
     role: "reader",
+    relationToChildren: "other",
     createdAt: "2026-10-04",
   });
   const response = await GET(new Request("https://www.storyturn.app/join?code=FAMILY24"));

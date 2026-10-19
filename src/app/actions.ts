@@ -3,25 +3,45 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { acceptPendingInviteForCurrentUser } from "@/lib/accept-pending-invite";
 import { appUrl, isDemoMode } from "@/lib/config";
 import {
-  getCurrentMember,
-  reserveBookLookup,
   addKid,
-  deleteKid,
-  updateKid,
-  updateMember,
-  deleteSchedule,
   cancelSession,
-  getSessionDetail,
   createFamily,
   createInviteCode,
+  deleteKid,
+  deleteSchedule,
+  getCurrentMember,
+  getSessionDetail,
   joinFamily,
+  reserveBookLookup,
   saveSchedule,
+  updateKid,
+  updateMember,
   updateSession,
 } from "@/lib/data";
-import { demoLogin, demoLogout } from "@/lib/demo/store";
-import { searchOpenLibrary } from "@/lib/open-library";
+import * as demo from "@/lib/demo/store";
+import {
+  addBookFromSearch,
+  addRandomBooksToUpcomingSessions,
+  cascadeInsertReader,
+  demoLogin,
+  demoLogout,
+  shuffleBooksForUpcomingSessions,
+  shuffleSessionBooks,
+  swapSessionReaders,
+  updateMemberRelation,
+  type AddBookResolution,
+  type AddBookResult,
+} from "@/lib/demo/store";
+import {
+  clearDemoSessionCookie,
+  setDemoSessionCookie,
+} from "@/lib/demo-session";
+import { searchBooks } from "@/lib/book-search";
+import { parseChildRelation } from "@/lib/domain/relations";
+import { clearPendingInvite, setPendingInvite } from "@/lib/pending-invite";
 import { createClient } from "@/lib/supabase/server";
 
 function authErrorRedirect(path: string, message: string): never {
@@ -36,9 +56,20 @@ export async function loginAction(formData: FormData) {
     authErrorRedirect("/login", "Enter a valid email");
   }
 
+  const inviteFromForm = String(formData.get("invite") ?? "").trim();
+  if (inviteFromForm && isDemoMode()) {
+    await setPendingInvite(inviteFromForm);
+  }
+
   if (isDemoMode()) {
-    demoLogin(email);
-    redirect("/");
+    const user = demoLogin(email);
+    await setDemoSessionCookie(user.id);
+    const accepted = await acceptPendingInviteForCurrentUser();
+    revalidatePath("/");
+    if (await getCurrentMember()) {
+      redirect(accepted.status === "joined" ? "/invite/consumed" : "/");
+    }
+    redirect("/onboarding");
   }
 
   const password = String(formData.get("password") ?? "");
@@ -59,9 +90,20 @@ export async function signupAction(formData: FormData) {
     authErrorRedirect("/signup", "Enter a valid email");
   }
 
+  const inviteFromForm = String(formData.get("invite") ?? "").trim();
+  if (inviteFromForm && isDemoMode()) {
+    await setPendingInvite(inviteFromForm);
+  }
+
   if (isDemoMode()) {
-    demoLogin(email);
-    redirect("/");
+    const user = demoLogin(email);
+    await setDemoSessionCookie(user.id);
+    const accepted = await acceptPendingInviteForCurrentUser();
+    revalidatePath("/");
+    if (await getCurrentMember()) {
+      redirect(accepted.status === "joined" ? "/invite/consumed" : "/");
+    }
+    redirect("/onboarding");
   }
 
   if (password.length < 6) {
@@ -133,6 +175,7 @@ export async function logoutAction() {
   (await cookies()).delete("storyturn-invite");
   if (isDemoMode()) {
     demoLogout();
+    await clearDemoSessionCookie();
   } else {
     const supabase = await createClient();
     await supabase.auth.signOut();
@@ -141,27 +184,74 @@ export async function logoutAction() {
 }
 
 export async function createFamilyAction(formData: FormData) {
-  await createFamily(String(formData.get("name") ?? "Our family"));
+  const name = String(formData.get("name") ?? "Our family");
+  const relation = parseChildRelation(formData.get("relationToChildren"), "parent");
+  if (isDemoMode()) {
+    demo.createFamily(name, relation);
+  } else {
+    await createFamily(name);
+  }
   (await cookies()).delete("storyturn-invite");
+  await clearPendingInvite();
   revalidatePath("/");
   redirect("/");
 }
 
 export async function joinFamilyAction(formData: FormData) {
-  await joinFamily(String(formData.get("code") ?? ""));
+  const code = String(formData.get("code") ?? "");
+  const relation = parseChildRelation(formData.get("relationToChildren"), "other");
+  if (isDemoMode()) {
+    demo.joinFamily(code, relation);
+  } else {
+    await joinFamily(code);
+  }
   (await cookies()).delete("storyturn-invite");
+  await clearPendingInvite();
   revalidatePath("/");
   redirect("/");
 }
 
+export async function updateMemberRelationAction(formData: FormData) {
+  updateMemberRelation(
+    String(formData.get("memberId") ?? ""),
+    parseChildRelation(formData.get("relationToChildren")),
+  );
+  revalidatePath("/family");
+  revalidatePath("/schedule");
+}
+
+export async function cascadeInsertAction(formData: FormData) {
+  await cascadeInsertReader({
+    fromSessionId: String(formData.get("fromSessionId") ?? ""),
+    fillInMemberId: String(formData.get("fillInMemberId") ?? ""),
+  });
+  revalidatePath("/schedule");
+  revalidatePath("/");
+}
+
+export async function swapSessionsAction(formData: FormData) {
+  await swapSessionReaders({
+    sessionAId: String(formData.get("sessionAId") ?? ""),
+    sessionBId: String(formData.get("sessionBId") ?? ""),
+  });
+  revalidatePath("/schedule");
+  revalidatePath("/");
+}
+
 export async function addKidAction(formData: FormData) {
-  await addKid(String(formData.get("name") ?? ""), Number(formData.get("age") ?? 0));
+  const name = String(formData.get("name") ?? "");
+  const birthdayRaw = String(formData.get("birthday") ?? "");
+  await addKid(name, birthdayRaw);
+  revalidatePath("/kids");
   revalidatePath("/family");
 }
 
-export async function createInviteAction(formData: FormData) {
-  await createInviteCode(String(formData.get("role")) === "owner" ? "owner" : "reader");
+export async function createInviteAction(formData?: FormData) {
+  const role =
+    formData && String(formData.get("role")) === "owner" ? "owner" : "reader";
+  const code = await createInviteCode(role);
   revalidatePath("/family");
+  return { code };
 }
 
 export async function saveScheduleAction(formData: FormData) {
@@ -173,29 +263,77 @@ export async function saveScheduleAction(formData: FormData) {
     timezone: String(formData.get("timezone") ?? ""),
     booksPerSession: Number(formData.get("booksPerSession") ?? 1),
     assignRandomBooks: formData.get("assignRandomBooks") === "on",
-    // Legacy storage field; book logging is always flexible.
     bookTiming: "after",
   });
   revalidatePath("/schedule");
   revalidatePath("/");
 }
 
+export async function addRandomBooksToUpcomingAction(_formData?: FormData) {
+  void _formData;
+  const updated = addRandomBooksToUpcomingSessions();
+  revalidatePath("/schedule");
+  revalidatePath("/");
+  return { updated };
+}
+
+export async function shuffleUpcomingBooksAction(_formData?: FormData) {
+  void _formData;
+  const updated = shuffleBooksForUpcomingSessions();
+  revalidatePath("/schedule");
+  revalidatePath("/");
+  return { updated };
+}
+
+export async function shuffleSessionBooksAction(formData: FormData) {
+  const sessionId = String(formData.get("sessionId") ?? "");
+  shuffleSessionBooks(sessionId);
+  revalidatePath("/");
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath("/schedule");
+}
+
 export async function searchBooksAction(query: string) {
   if (!(await getCurrentMember())) throw new Error("Join a family first");
   try {
-    return await searchOpenLibrary(query.slice(0, 120), {
-      limit: 8,
-      beforeRequest: reserveBookLookup,
-    });
+    await reserveBookLookup();
+    return await searchBooks(query.slice(0, 120), { limit: 8 });
   } catch {
     throw new Error("Book search is unavailable. Please retry shortly.");
   }
 }
 
-export async function addBookAction(formData: FormData) {
-  const { addEditionAction } = await import("@/app/book-actions");
-  const result = await addEditionAction(String(formData.get("editionKey") ?? ""));
-  if (!result.ok) throw new Error(result.error);
+function parseAddBookResolution(formData: FormData): AddBookResolution | undefined {
+  const resolution = String(formData.get("resolution") ?? "");
+  if (resolution === "keep_both") return { action: "keep_both" };
+  if (resolution === "replace") {
+    const existingBookId = String(formData.get("existingBookId") ?? "");
+    if (!existingBookId) throw new Error("Pick which library book to replace");
+    return { action: "replace", existingBookId };
+  }
+  return undefined;
+}
+
+export async function addBookAction(formData: FormData): Promise<AddBookResult> {
+  const result = addBookFromSearch(
+    {
+      title: String(formData.get("title") ?? ""),
+      authors: String(formData.get("authors") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      openLibraryKey: String(formData.get("openLibraryKey") || "") || null,
+      coverUrl: String(formData.get("coverUrl") || "") || null,
+      isbn: String(formData.get("isbn") || "") || null,
+    },
+    parseAddBookResolution(formData),
+  );
+  if (result.status === "added" || result.status === "replaced") {
+    revalidatePath("/library");
+    revalidatePath("/schedule");
+    revalidatePath("/");
+  }
+  return result;
 }
 
 export async function cancelSessionAction(sessionId: string) {
@@ -234,15 +372,21 @@ export async function switchDemoUserAction(formData: FormData) {
     authErrorRedirect("/login", "Demo users are only available in demo mode");
   }
   (await cookies()).delete("storyturn-invite");
-  demoLogin(String(formData.get("email") ?? "alex@example.com"));
+  const user = demoLogin(String(formData.get("email") ?? "alex@example.com"));
+  await setDemoSessionCookie(user.id);
+  const accepted = await acceptPendingInviteForCurrentUser();
   revalidatePath("/");
-  redirect("/");
+  if (await getCurrentMember()) {
+    redirect(accepted.status === "joined" ? "/invite/consumed" : "/");
+  }
+  redirect("/onboarding");
 }
 
 export async function deleteScheduleAction() {
   await deleteSchedule();
   revalidatePath("/", "layout");
 }
+
 export async function updateMemberAction(formData: FormData) {
   const role = String(formData.get("role"));
   if (role !== "owner" && role !== "reader") throw new Error("Invalid role");
@@ -253,14 +397,19 @@ export async function updateMemberAction(formData: FormData) {
   );
   revalidatePath("/", "layout");
 }
+
 export async function updateKidAction(formData: FormData) {
-  await updateKid(
-    String(formData.get("id")),
-    String(formData.get("name") ?? ""),
-    Number(formData.get("age")),
-  );
+  const id = String(formData.get("id"));
+  const name = String(formData.get("name") ?? "");
+  const birthday = String(formData.get("birthday") ?? "");
+  if (isDemoMode()) {
+    demo.updateKid(id, name, birthday);
+  } else {
+    await updateKid(id, name, birthday);
+  }
   revalidatePath("/", "layout");
 }
+
 export async function deleteKidAction(formData: FormData) {
   await deleteKid(String(formData.get("id")));
   revalidatePath("/", "layout");

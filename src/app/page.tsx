@@ -7,12 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getHomeContext } from "@/lib/data";
-import { upcomingSessionDay } from "@/lib/domain/session-presentation";
 import {
   currentReaderLabels,
   originalReaderLabels,
   wasCorrected,
 } from "@/lib/domain/corrections";
+import { upcomingSessionDay } from "@/lib/domain/session-presentation";
 
 export default async function HomePage() {
   const home = await getHomeContext();

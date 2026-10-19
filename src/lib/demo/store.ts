@@ -6,6 +6,11 @@ import {
   selectRandomBooks,
 } from "@/lib/domain/schedule-settings";
 import { dateInTimezone } from "@/lib/domain/calendar-date";
+import {
+  buildCascadePlan,
+  orderedFutureScheduledNights,
+  planSwapNights,
+} from "@/lib/domain/cascade";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
 import {
   generateInviteCode,
@@ -14,13 +19,32 @@ import {
 } from "@/lib/domain/invites";
 import {
   assertTransition,
+  buildIcsUid,
   generateSessionsFromSchedule,
   isPastSession,
   nextSessionForMember,
   sessionDateKey,
 } from "@/lib/domain/sessions";
+import {
+  checkForDuplicate,
+  mergeKeptBook,
+  storedIsbnKey,
+  type BookInput,
+  type TitleDuplicateCandidate,
+} from "@/lib/domain/book-duplicates";
 import { computeDashboardStats } from "@/lib/domain/stats";
-import { addDays, readerForDate } from "@/lib/domain/rotation";
+import { birthdayFromAge, parseBirthday } from "@/lib/domain/kids";
+import {
+  DEFAULT_FAMILY_TIMEZONE,
+  formatDateOnlyInTimeZone,
+} from "@/lib/domain/dates";
+import { parseChildRelation, type ChildRelation } from "@/lib/domain/relations";
+import { addDays, formatDateOnly, readerForDate } from "@/lib/domain/rotation";
+import {
+  pickRandomBookIds,
+  SESSION_BOOK_PICK_COUNT,
+  sessionHasLibraryBooks,
+} from "@/lib/domain/session-books";
 import { createSeedState } from "@/lib/demo/seed";
 import { sendSessionInviteEmail } from "@/lib/session-mail";
 import type {
@@ -49,6 +73,67 @@ function id(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function familyLibraryIds(familyId: string): string[] {
+  return state()
+    .books.filter((b) => b.familyId === familyId)
+    .map((b) => b.id);
+}
+
+/** Replace a session's library books with a fresh random pick (keeps freeform titles). */
+function setSessionLibraryBooks(sessionId: string, bookIds: string[]): void {
+  const freeform = state().sessionBooks.filter(
+    (b) => b.sessionId === sessionId && b.bookId === null,
+  );
+  state().sessionBooks = state().sessionBooks.filter(
+    (b) => b.sessionId !== sessionId,
+  );
+  const now = new Date().toISOString();
+  for (const bookId of bookIds) {
+    state().sessionBooks.push({
+      id: id("sb"),
+      sessionId,
+      bookId,
+      titleFreeform: null,
+      createdAt: now,
+    });
+  }
+  state().sessionBooks.push(...freeform);
+}
+
+function assignRandomBooksToSession(
+  sessionId: string,
+  familyId: string,
+  count: number = SESSION_BOOK_PICK_COUNT,
+): string[] {
+  const picked = pickRandomBookIds(familyLibraryIds(familyId), count);
+  if (picked.length === 0) return [];
+  setSessionLibraryBooks(sessionId, picked);
+  return picked;
+}
+
+function familyTimezone(familyId: string): string {
+  return (
+    state().schedules.find((s) => s.familyId === familyId && s.active)
+      ?.timezone ?? DEFAULT_FAMILY_TIMEZONE
+  );
+}
+
+function upcomingScheduledSessions(familyId: string): ReadingSession[] {
+  // Match schedule UI: family-local calendar day, not UTC date-only.
+  const today = formatDateOnlyInTimeZone(
+    new Date(),
+    familyTimezone(familyId),
+  );
+  return state()
+    .sessions.filter(
+      (s) =>
+        s.familyId === familyId &&
+        s.status === "scheduled" &&
+        sessionDateKey(s.scheduledFor) >= today,
+    )
+    .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
+}
+
 export function resetDemoStore(): void {
   globalForDemo.__storyTurnState = createSeedState();
   globalForDemo.__storyTurnSessionUserId = "user_alex";
@@ -59,8 +144,10 @@ export function getDemoState(): AppState {
 }
 
 export function getDemoSessionUserId(): string | null {
+  // Do not default to the seeded Alex user. Anonymous browsers (invite links)
+  // must stay signed out until they explicitly sign in. Tests call resetDemoStore().
   if (globalForDemo.__storyTurnSessionUserId === undefined) {
-    globalForDemo.__storyTurnSessionUserId = "user_alex";
+    globalForDemo.__storyTurnSessionUserId = null;
   }
   return globalForDemo.__storyTurnSessionUserId;
 }
@@ -104,7 +191,10 @@ export function demoLogout(): void {
   setDemoSessionUserId(null);
 }
 
-export function createFamily(name: string): void {
+export function createFamily(
+  name: string,
+  relationToChildren: ChildRelation = "parent",
+): void {
   const user = getCurrentUser();
   if (!user) throw new Error("Not signed in");
   if (getCurrentMember()) throw new Error("Already in a family");
@@ -124,6 +214,7 @@ export function createFamily(name: string): void {
     displayName: user.displayName,
     email: user.email,
     role: "owner",
+    relationToChildren: parseChildRelation(relationToChildren, "parent"),
     createdAt: now,
   });
   state().invites.push({
@@ -138,15 +229,14 @@ export function createFamily(name: string): void {
   });
 }
 
-export function joinFamily(codeRaw: string): void {
-  const user = getCurrentUser();
-  if (!user) throw new Error("Not signed in");
-  if (getCurrentMember()) throw new Error("Already in a family");
-
+export function findInviteByCode(codeRaw: string) {
   const code = normalizeInviteCode(codeRaw);
-  const invite = state().invites.find((i) => normalizeInviteCode(i.code) === code);
-  if (!invite) throw new Error("Invalid invite code");
-
+  if (!code) return null;
+  const invite = state().invites.find(
+    (i) => normalizeInviteCode(i.code) === code,
+  );
+  if (!invite) return null;
+  const family = state().families.find((f) => f.id === invite.familyId) ?? null;
   const usable = isInviteUsable({
     code,
     expectedCode: invite.code,
@@ -154,56 +244,347 @@ export function joinFamily(codeRaw: string): void {
     maxUses: invite.maxUses,
     expiresAt: invite.expiresAt,
   });
-  if (!usable.ok) throw new Error(usable.reason);
+  return { invite, family, usable, code };
+}
 
-  invite.uses += 1;
+export function joinFamily(
+  codeRaw: string,
+  relationToChildren: ChildRelation = "other",
+): void {
+  const user = getCurrentUser();
+  if (!user) throw new Error("Not signed in");
+  if (getCurrentMember()) throw new Error("Already in a family");
+
+  const matched = findInviteByCode(codeRaw);
+  if (!matched) throw new Error("Invalid invite code");
+  if (!matched.usable.ok) throw new Error(matched.usable.reason);
+
+  matched.invite.uses += 1;
   state().members.push({
     id: id("mem"),
-    familyId: invite.familyId,
+    familyId: matched.invite.familyId,
     userId: user.id,
     displayName: user.displayName,
     email: user.email,
-    role: invite.role ?? "reader",
+    role: matched.invite.role ?? "reader",
+    relationToChildren: parseChildRelation(relationToChildren, "other"),
     createdAt: new Date().toISOString(),
   });
 }
 
-export function addKid(name: string, age: number): Kid {
-  const member = requireDemoOwner();
-  if (!name.trim() || !Number.isInteger(age) || age < 0 || age > 18)
-    throw new Error("Enter a name and age from 0 to 18");
+function requireOwner(): FamilyMember {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  if (member.role !== "owner") {
+    throw new Error("Only family admins can do that");
+  }
+  return member;
+}
+
+export function updateMemberRelation(
+  memberId: string,
+  relationToChildren: ChildRelation,
+): void {
+  const actor = requireOwner();
+  const target = state().members.find(
+    (m) => m.id === memberId && m.familyId === actor.familyId,
+  );
+  if (!target) throw new Error("Member not found");
+  target.relationToChildren = parseChildRelation(relationToChildren);
+}
+
+/**
+ * Insert a fill-in reader on a future night and shift later nights forward.
+ * Owner-only. Example: Nana covers tonight → wife moves to tomorrow, etc.
+ */
+export async function cascadeInsertReader(input: {
+  fromSessionId: string;
+  fillInMemberId: string;
+}): Promise<{ changedSessionIds: string[]; extraSessionId: string }> {
+  const actor = requireOwner();
+  const fillIn = state().members.find(
+    (m) => m.id === input.fillInMemberId && m.familyId === actor.familyId,
+  );
+  if (!fillIn) throw new Error("Fill-in reader must be in your family");
+
+  const familySessions = state().sessions.filter(
+    (s) => s.familyId === actor.familyId,
+  );
+  const nights = orderedFutureScheduledNights({
+    sessions: familySessions,
+    assignments: state().assignments,
+    fromSessionId: input.fromSessionId,
+  });
+
+  const plan = buildCascadePlan({
+    nights,
+    fillInMemberId: input.fillInMemberId,
+    allFamilySessionDates: familySessions.map((s) =>
+      sessionDateKey(s.scheduledFor),
+    ),
+  });
+
+  const schedule = state().schedules.find(
+    (s) => s.familyId === actor.familyId && s.active,
+  );
+  if (!schedule) throw new Error("Save a schedule before cascading");
+
+  for (const step of plan.reassignments) {
+    state().assignments = applyReassignment({
+      existing: state().assignments,
+      sessionId: step.sessionId,
+      newMemberIds: [step.memberId],
+    });
+    await sendSessionInvite(step.sessionId, "REQUEST");
+  }
+
+  const extraSessionId = id("ses");
+  const extra: ReadingSession = {
+    id: extraSessionId,
+    familyId: actor.familyId,
+    scheduleId: schedule.id,
+    scheduledFor: `${plan.extraNightDate}T${schedule.timeLocal}:00`,
+    status: "scheduled",
+    notes: null,
+    icsUid: buildIcsUid(actor.familyId, plan.extraNightDate),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  state().sessions.push(extra);
+  state().assignments = applyReassignment({
+    existing: state().assignments,
+    sessionId: extraSessionId,
+    newMemberIds: [plan.extraNightMemberId],
+  });
+  assignRandomBooksToSession(extraSessionId, actor.familyId);
+  await sendSessionInvite(extraSessionId, "REQUEST");
+
+  return {
+    changedSessionIds: plan.reassignments.map((r) => r.sessionId),
+    extraSessionId,
+  };
+}
+
+/**
+ * Fill upcoming scheduled nights that have no library books with a random pick.
+ * Returns how many nights were updated.
+ */
+export function addRandomBooksToUpcomingSessions(): number {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  const library = familyLibraryIds(member.familyId);
+  if (library.length === 0) {
+    throw new Error("Add books to the family library first");
+  }
+
+  let updated = 0;
+  for (const session of upcomingScheduledSessions(member.familyId)) {
+    if (sessionHasLibraryBooks(state().sessionBooks, session.id)) continue;
+    assignRandomBooksToSession(session.id, member.familyId);
+    updated += 1;
+  }
+  return updated;
+}
+
+/**
+ * Re-pick random library books for every upcoming scheduled night.
+ */
+export function shuffleBooksForUpcomingSessions(): number {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  const library = familyLibraryIds(member.familyId);
+  if (library.length === 0) {
+    throw new Error("Add books to the family library first");
+  }
+
+  let updated = 0;
+  for (const session of upcomingScheduledSessions(member.familyId)) {
+    assignRandomBooksToSession(session.id, member.familyId);
+    updated += 1;
+  }
+  return updated;
+}
+
+/** Re-pick random library books for one upcoming scheduled session. */
+export function shuffleSessionBooks(sessionId: string): string[] {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  const session = state().sessions.find(
+    (s) => s.id === sessionId && s.familyId === member.familyId,
+  );
+  if (!session) throw new Error("Session not found");
+  if (session.status !== "scheduled") {
+    throw new Error("Only scheduled nights can shuffle books");
+  }
+  if (isPastSession(session.scheduledFor)) {
+    throw new Error(
+      "Past nights cannot shuffle books; edit the session with a correction instead",
+    );
+  }
+  const library = familyLibraryIds(member.familyId);
+  if (library.length === 0) {
+    throw new Error("Add books to the family library first");
+  }
+  return assignRandomBooksToSession(session.id, member.familyId);
+}
+
+export function getUpcomingBookCtaState() {
+  const member = getCurrentMember();
+  if (!member) {
+    return {
+      libraryCount: 0,
+      upcomingCount: 0,
+      withoutBooksCount: 0,
+      withBooksCount: 0,
+    };
+  }
+  const libraryCount = familyLibraryIds(member.familyId).length;
+  const upcoming = upcomingScheduledSessions(member.familyId);
+  let withoutBooksCount = 0;
+  let withBooksCount = 0;
+  for (const session of upcoming) {
+    if (sessionHasLibraryBooks(state().sessionBooks, session.id)) {
+      withBooksCount += 1;
+    } else {
+      withoutBooksCount += 1;
+    }
+  }
+  return {
+    libraryCount,
+    upcomingCount: upcoming.length,
+    withoutBooksCount,
+    withBooksCount,
+  };
+}
+
+/**
+ * Swap current readers between two future scheduled nights. Owner-only.
+ */
+export async function swapSessionReaders(input: {
+  sessionAId: string;
+  sessionBId: string;
+}): Promise<void> {
+  const actor = requireOwner();
+  const familySessions = state().sessions.filter(
+    (s) => s.familyId === actor.familyId,
+  );
+  const a = familySessions.find((s) => s.id === input.sessionAId);
+  const b = familySessions.find((s) => s.id === input.sessionBId);
+  if (!a || !b) throw new Error("Both nights must belong to your family");
+  if (a.status !== "scheduled" || b.status !== "scheduled") {
+    throw new Error("Only scheduled nights can be swapped");
+  }
+  const nowDay = formatDateOnly(new Date());
+  if (
+    sessionDateKey(a.scheduledFor) < nowDay ||
+    sessionDateKey(b.scheduledFor) < nowDay
+  ) {
+    throw new Error("Cannot swap past nights");
+  }
+
+  const readerOf = (sessionId: string) => {
+    const current = state().assignments.find(
+      (asg) => asg.sessionId === sessionId && asg.isCurrent,
+    );
+    if (!current) throw new Error("Night is missing a reader");
+    return current.memberId;
+  };
+
+  const swaps = planSwapNights({
+    sessionAId: a.id,
+    sessionBId: b.id,
+    readerAId: readerOf(a.id),
+    readerBId: readerOf(b.id),
+  });
+
+  for (const step of swaps) {
+    state().assignments = applyReassignment({
+      existing: state().assignments,
+      sessionId: step.sessionId,
+      newMemberIds: [step.memberId],
+    });
+    await sendSessionInvite(step.sessionId, "REQUEST");
+  }
+}
+
+export function addKid(name: string, birthdayRaw: string): Kid {
+  const member = getCurrentMember();
+  if (!member) throw new Error("Join a family first");
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Name is required");
+  const birthday = parseBirthday(birthdayRaw);
   const kid: Kid = {
     id: id("kid"),
     familyId: member.familyId,
-    name: name.trim(),
-    age,
+    name: trimmed,
+    birthday,
     createdAt: new Date().toISOString(),
   };
   state().kids.push(kid);
   return kid;
 }
 
-function addBookFromSearch(input: {
-  title: string;
-  authors: string[];
-  openLibraryKey: string | null;
-  coverUrl: string | null;
-  isbn: string | null;
-}): Book {
+export type AddBookResolution =
+  | { action: "keep_both" }
+  | { action: "replace"; existingBookId: string };
+
+export type AddBookResult =
+  | { status: "added"; book: Book }
+  | { status: "already_in_library"; existing: Book }
+  | {
+      status: "possible_duplicate";
+      incoming: BookInput;
+      candidates: TitleDuplicateCandidate[];
+    }
+  | { status: "replaced"; book: Book };
+
+/**
+ * Same barcode always keeps the earlier book. Same title (and author) asks the
+ * caller to resolve: keep both, or replace the existing book's metadata in
+ * place so sessions that reference it keep pointing at the same id.
+ */
+export function addBookFromSearch(
+  input: BookInput,
+  resolution?: AddBookResolution,
+): AddBookResult {
   const member = getCurrentMember();
   if (!member) throw new Error("Join a family first");
+  const title = input.title.trim();
+  if (!title) throw new Error("Book title is required");
+  const incoming: BookInput = {
+    ...input,
+    title,
+    isbn: storedIsbnKey(input.isbn),
+  };
+  const library = state().books.filter((b) => b.familyId === member.familyId);
+  const check = checkForDuplicate(library, incoming);
+
+  if (check.kind === "same_isbn") {
+    return { status: "already_in_library", existing: check.existing };
+  }
+
+  if (check.kind === "same_title") {
+    if (resolution?.action === "replace") {
+      const target = check.candidates.find(
+        (c) => c.existing.id === resolution.existingBookId,
+      )?.existing;
+      if (!target) throw new Error("That book is no longer a match in your library");
+      Object.assign(target, mergeKeptBook(incoming, target));
+      return { status: "replaced", book: target };
+    }
+    if (resolution?.action !== "keep_both") {
+      return { status: "possible_duplicate", incoming, candidates: check.candidates };
+    }
+  }
+
   const book: Book = {
     id: id("book"),
     familyId: member.familyId,
-    title: input.title,
-    authors: input.authors,
-    openLibraryKey: input.openLibraryKey,
-    coverUrl: input.coverUrl,
-    isbn: input.isbn,
+    ...incoming,
     createdAt: new Date().toISOString(),
   };
   state().books.push(book);
-  return book;
+  return { status: "added", book };
 }
 
 export function ensureUpcomingSessions(daysAhead = 14): number {
@@ -648,6 +1029,13 @@ export function getFamilyAdmin() {
   };
 }
 
+/** Active schedule timezone for the current member's family (display/compare days). */
+export function getFamilyTimezone(): string {
+  const member = getCurrentMember();
+  if (!member) return DEFAULT_FAMILY_TIMEZONE;
+  return familyTimezone(member.familyId);
+}
+
 export function createInviteCode(role: "owner" | "reader" = "reader"): string {
   const member = requireDemoOwner();
   const code = generateInviteCode();
@@ -713,13 +1101,21 @@ export function updateMember(
   Object.assign(target, { displayName: displayName.trim(), role });
 }
 
-export function updateKid(kidId: string, name: string, age: number): void {
+export function updateKid(
+  kidId: string,
+  name: string,
+  birthdayOrAge: string | number,
+): void {
   const owner = requireDemoOwner();
   const kid = state().kids.find((k) => k.id === kidId && k.familyId === owner.familyId);
   if (!kid) throw new Error("Child not found");
-  if (!name.trim() || !Number.isInteger(age) || age < 0 || age > 18)
-    throw new Error("Enter a name and age from 0 to 18");
-  Object.assign(kid, { name: name.trim(), age });
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Name is required");
+  const birthday =
+    typeof birthdayOrAge === "number"
+      ? birthdayFromAge(birthdayOrAge)
+      : parseBirthday(birthdayOrAge);
+  Object.assign(kid, { name: trimmed, birthday });
 }
 
 export function deleteKid(kidId: string): void {
@@ -786,7 +1182,17 @@ export function saveBookEdition(
       (b.editionKey === input.editionKey || (input.isbn && b.isbn === input.isbn)),
   );
   if (existing) return { book: existing, created: false };
-  const book = addBookFromSearch(input);
+  let result = addBookFromSearch(input);
+  if (result.status === "possible_duplicate") {
+    result = addBookFromSearch(input, { action: "keep_both" });
+  }
+  if (result.status === "already_in_library") {
+    return { book: result.existing, created: false };
+  }
+  if (result.status !== "added" && result.status !== "replaced") {
+    throw new Error("Could not save book to library");
+  }
+  const book = result.book;
   Object.assign(book, {
     editionKey: input.editionKey,
     format: input.format,

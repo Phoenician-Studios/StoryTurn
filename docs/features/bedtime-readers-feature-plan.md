@@ -6,9 +6,9 @@ Family bedtime reading tracker: whose night it is, book library, scheduled readi
 
 | Field | Value |
 |-------|-------|
-| Status | in-progress (live path coded; production domain www.storyturn.app) |
-| Owner session | feature-context |
-| Last updated | 2026-10-04 |
+| Status | in-progress (live path on www.storyturn.app; demo mode on main) |
+| Owner session | feature-context / cloud agent |
+| Last updated | 2026-10-18 |
 | Related PR / branch | `main` |
 
 ## Goals (v1)
@@ -77,7 +77,7 @@ erDiagram
 
 - **families** — `id`, `name`, `created_by`, timestamps
 - **family_members** — `family_id`, `user_id`, `display_name`, `role` (`owner` | `reader`), `email`
-- **kids** — `family_id`, `name`, `age`, optional `avatar_url` (unused in v1 UI)
+- **kids** — `family_id`, `name`, `birthday` (date; age derived in UI), optional `avatar_url` (unused in v1 UI)
 - **invite_codes** — `family_id`, `code`, `expires_at`, `max_uses`, `uses`, `created_by`
 - **books** — `family_id`, `title`, `authors`, `open_library_key`, `cover_url`, `isbn`
 - **schedules** — `family_id`, `mode` (`together` | `per_kid` later), `reader_rotation` (ordered member ids), `start_date`, `time_local`, `timezone`, `book_timing` (`ahead` | `after`), `active`
@@ -160,18 +160,21 @@ Correction rule: editing a past session never deletes original assignment rows (
 - Requirements locked (ICS, calendar in v1, dashboard filters, cancel, multi-reader invites, tests+CI).
 - Feature plan written.
 - Next.js app shipped on `main` with demo mode, domain unit tests, and GitHub Actions CI.
-- Pages and server actions go through `src/lib/data.ts`. Demo mode still uses the in-memory store. With `FORCE_DEMO_MODE=0` and both SQL migrations applied, the same actions use Supabase Auth and Postgres.
+- Pages and server actions go through `src/lib/data.ts`. Demo mode still uses the in-memory store. With `FORCE_DEMO_MODE=0` and SQL migrations applied, the same actions use Supabase Auth and Postgres.
 - Auth routes: email/password sign-in and sign-up, Google OAuth, password reset, `/auth/callback`, and `/reset-password/update`.
 - `supabase/migrations/002_family_bootstrap.sql` adds `create_family` / `join_family`, fixes RLS recursion, and limits schedule, kid, and invite writes to owners.
 - Cron `POST /api/cron/generate-sessions` generates sessions for every active schedule when not in demo mode.
 - SQL migrations are applied on the StoryTurn Supabase project. Production Auth site URL is `https://www.storyturn.app`.
+- Kids store `birthday` (YYYY-MM-DD) instead of static `age`; family UI collects a date and shows formatted birthday + derived years.
+- Owner cascade/swap rotations and member `relationToChildren` (see [`rotation-cascade-swap-feature-plan.md`](./rotation-cascade-swap-feature-plan.md)).
 
 ### Remaining work
 
-- Walk signup → create family → schedule → session on `https://www.storyturn.app` after this branch is deployed.
+- Walk signup → create family → schedule → session on `https://www.storyturn.app` after deploy.
 - Enable the Google provider in Supabase. Email/password is already on. Password recovery still uses Supabase's mailer, not Plunk.
 - Create the daily QStash schedule for `POST https://www.storyturn.app/api/cron/generate-sessions`.
 - Require the `lint-test-build` status check on `main`.
+- Finish wiring any remaining demo-only paths to live Supabase where credentials exist; real Plunk sends for session mail.
 
 ### Blockers / risks
 
@@ -181,6 +184,6 @@ Correction rule: editing a past session never deletes original assignment rows (
 
 ### Pointers for the next agent
 
-- Start at: confirm a real signup on `https://www.storyturn.app` after deploy.
+- Start at: confirm a real signup on `https://www.storyturn.app` after deploy; replace any remaining demo-only store calls with Supabase while keeping domain helpers (`src/lib/domain/kids.ts` for birthday parsing/age).
 - Do not: add per-kid ownership or profile photos in v1.
-- Verify with: `npm test`, `npm run lint`, `npm run build`, then a live signup once the schema exists. Demo happy path: home → session → library → dashboard.
+- Verify with: `npm test`, `npm run lint`, `npm run build`, then live signup when schema is current. Demo happy path: home → family (kid birthday) → session → library → dashboard.
