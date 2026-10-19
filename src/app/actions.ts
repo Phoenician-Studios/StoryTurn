@@ -19,6 +19,7 @@ import {
   saveSchedule,
   updateKid,
   updateMember,
+  updateMemberRelation,
   updateSession,
 } from "@/lib/data";
 import * as demo from "@/lib/demo/store";
@@ -31,7 +32,6 @@ import {
   shuffleBooksForUpcomingSessions,
   shuffleSessionBooks,
   swapSessionReaders,
-  updateMemberRelation,
   type AddBookResolution,
   type AddBookResult,
 } from "@/lib/demo/store";
@@ -212,7 +212,7 @@ export async function joinFamilyAction(formData: FormData) {
 }
 
 export async function updateMemberRelationAction(formData: FormData) {
-  updateMemberRelation(
+  await updateMemberRelation(
     String(formData.get("memberId") ?? ""),
     parseChildRelation(formData.get("relationToChildren")),
   );

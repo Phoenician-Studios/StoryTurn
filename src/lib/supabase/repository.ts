@@ -6,6 +6,7 @@ import { dateInTimezone } from "@/lib/domain/calendar-date";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { applyReassignment, buildCorrectionRecord } from "@/lib/domain/corrections";
 import { generateInviteCode } from "@/lib/domain/invites";
+import type { ChildRelation } from "@/lib/domain/relations";
 import { addDays } from "@/lib/domain/rotation";
 import {
   assertTransition,
@@ -817,6 +818,19 @@ export async function updateMember(
     new_role: role,
   });
   assertNoError(error, "Could not update reader");
+}
+
+export async function updateMemberRelation(
+  memberId: string,
+  relationToChildren: ChildRelation,
+): Promise<void> {
+  const { supabase, member } = requireMember(await loadContext());
+  requireOwner(member);
+  const { error } = await supabase.rpc("update_family_member_relation", {
+    target_id: memberId,
+    new_relation: relationToChildren,
+  });
+  assertNoError(error, "Could not update relation");
 }
 
 export async function updateKid(

@@ -1,4 +1,5 @@
 import type { SessionStatus } from "@/lib/types";
+import type { ChildRelation } from "@/lib/domain/relations";
 import { isDemoMode } from "@/lib/config";
 import * as demo from "@/lib/demo/store";
 import * as live from "@/lib/supabase/repository";
@@ -103,6 +104,14 @@ export async function updateMember(id: string, name: string, role: "owner" | "re
   return isDemoMode()
     ? demo.updateMember(id, name, role)
     : live.updateMember(id, name, role);
+}
+export async function updateMemberRelation(
+  memberId: string,
+  relationToChildren: ChildRelation,
+) {
+  return isDemoMode()
+    ? demo.updateMemberRelation(memberId, relationToChildren)
+    : live.updateMemberRelation(memberId, relationToChildren);
 }
 export async function updateKid(id: string, name: string, birthday: string) {
   return isDemoMode()
