@@ -16,6 +16,20 @@ export interface TitleDuplicateCandidate {
   recommended: DuplicateKeep;
 }
 
+export type AddBookResolution =
+  | { action: "keep_both" }
+  | { action: "replace"; existingBookId: string };
+
+export type AddBookResult =
+  | { status: "added"; book: Book }
+  | { status: "already_in_library"; existing: Book }
+  | {
+      status: "possible_duplicate";
+      incoming: BookInput;
+      candidates: TitleDuplicateCandidate[];
+    }
+  | { status: "replaced"; book: Book };
+
 export type DuplicateCheck =
   | { kind: "none" }
   | { kind: "same_isbn"; existing: Book }

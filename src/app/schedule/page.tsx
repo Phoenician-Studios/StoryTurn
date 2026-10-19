@@ -24,12 +24,10 @@ import {
   getCurrentUser,
   getFamilyAdmin,
   getFamilySessionPage,
-} from "@/lib/data";
-import {
   getUpcomingBookCtaState,
   listFamilyAssignments,
   listFamilySessions,
-} from "@/lib/demo/store";
+} from "@/lib/data";
 import {
   DEFAULT_FAMILY_TIMEZONE,
   formatDateOnlyInTimeZone,
@@ -66,14 +64,18 @@ export default async function SchedulePage({
   const isOwner = member.role === "owner";
   const timeZone = admin.schedule?.timezone ?? DEFAULT_FAMILY_TIMEZONE;
   const today = formatDateOnlyInTimeZone(new Date(), timeZone);
-  // Cascade/swap need the full upcoming set; demo store owns that helper today.
-  const futureScheduled = listFamilySessions().filter(
+  // Cascade/swap need the full upcoming set, not just the current page.
+  const [allSessions, allAssignments, bookCta] = await Promise.all([
+    listFamilySessions(),
+    listFamilyAssignments(),
+    getUpcomingBookCtaState(),
+  ]);
+  const futureScheduled = allSessions.filter(
     (s) => s.status === "scheduled" && sessionDateKey(s.scheduledFor) >= today,
   );
-  const bookCta = getUpcomingBookCtaState();
 
   const readerLabel = (sessionId: string) =>
-    [...assignments, ...listFamilyAssignments()]
+    [...assignments, ...allAssignments]
       .filter((a) => a.sessionId === sessionId && a.isCurrent)
       .filter(
         (a, index, all) =>

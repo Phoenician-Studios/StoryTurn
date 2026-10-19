@@ -6,8 +6,11 @@ import { redirect } from "next/navigation";
 import { acceptPendingInviteForCurrentUser } from "@/lib/accept-pending-invite";
 import { appUrl, isDemoMode } from "@/lib/config";
 import {
+  addBookFromSearch,
   addKid,
+  addRandomBooksToUpcomingSessions,
   cancelSession,
+  cascadeInsertReader,
   createFamily,
   createInviteCode,
   deleteKid,
@@ -17,24 +20,17 @@ import {
   joinFamily,
   reserveBookLookup,
   saveSchedule,
+  shuffleBooksForUpcomingSessions,
+  shuffleSessionBooks,
+  swapSessionReaders,
   updateKid,
   updateMember,
   updateMemberRelation,
   updateSession,
 } from "@/lib/data";
 import * as demo from "@/lib/demo/store";
-import {
-  addBookFromSearch,
-  addRandomBooksToUpcomingSessions,
-  cascadeInsertReader,
-  demoLogin,
-  demoLogout,
-  shuffleBooksForUpcomingSessions,
-  shuffleSessionBooks,
-  swapSessionReaders,
-  type AddBookResolution,
-  type AddBookResult,
-} from "@/lib/demo/store";
+import { demoLogin, demoLogout } from "@/lib/demo/store";
+import type { AddBookResolution, AddBookResult } from "@/lib/domain/book-duplicates";
 import {
   clearDemoSessionCookie,
   setDemoSessionCookie,
@@ -263,7 +259,7 @@ export async function saveScheduleAction(formData: FormData) {
 
 export async function addRandomBooksToUpcomingAction(_formData?: FormData) {
   void _formData;
-  const updated = addRandomBooksToUpcomingSessions();
+  const updated = await addRandomBooksToUpcomingSessions();
   revalidatePath("/schedule");
   revalidatePath("/");
   return { updated };
@@ -271,7 +267,7 @@ export async function addRandomBooksToUpcomingAction(_formData?: FormData) {
 
 export async function shuffleUpcomingBooksAction(_formData?: FormData) {
   void _formData;
-  const updated = shuffleBooksForUpcomingSessions();
+  const updated = await shuffleBooksForUpcomingSessions();
   revalidatePath("/schedule");
   revalidatePath("/");
   return { updated };
@@ -279,7 +275,7 @@ export async function shuffleUpcomingBooksAction(_formData?: FormData) {
 
 export async function shuffleSessionBooksAction(formData: FormData) {
   const sessionId = String(formData.get("sessionId") ?? "");
-  shuffleSessionBooks(sessionId);
+  await shuffleSessionBooks(sessionId);
   revalidatePath("/");
   revalidatePath(`/sessions/${sessionId}`);
   revalidatePath("/schedule");
@@ -307,7 +303,7 @@ function parseAddBookResolution(formData: FormData): AddBookResolution | undefin
 }
 
 export async function addBookAction(formData: FormData): Promise<AddBookResult> {
-  const result = addBookFromSearch(
+  const result = await addBookFromSearch(
     {
       title: String(formData.get("title") ?? ""),
       authors: String(formData.get("authors") ?? "")
