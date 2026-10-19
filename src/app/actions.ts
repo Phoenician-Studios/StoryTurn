@@ -186,11 +186,7 @@ export async function logoutAction() {
 export async function createFamilyAction(formData: FormData) {
   const name = String(formData.get("name") ?? "Our family");
   const relation = parseChildRelation(formData.get("relationToChildren"), "parent");
-  if (isDemoMode()) {
-    demo.createFamily(name, relation);
-  } else {
-    await createFamily(name);
-  }
+  await createFamily(name, relation);
   (await cookies()).delete("storyturn-invite");
   await clearPendingInvite();
   revalidatePath("/");
@@ -200,11 +196,7 @@ export async function createFamilyAction(formData: FormData) {
 export async function joinFamilyAction(formData: FormData) {
   const code = String(formData.get("code") ?? "");
   const relation = parseChildRelation(formData.get("relationToChildren"), "other");
-  if (isDemoMode()) {
-    demo.joinFamily(code, relation);
-  } else {
-    await joinFamily(code);
-  }
+  await joinFamily(code, relation);
   (await cookies()).delete("storyturn-invite");
   await clearPendingInvite();
   revalidatePath("/");

@@ -527,13 +527,17 @@ export async function ensureAllUpcomingSessions(daysAhead = 14): Promise<number>
   return insertGeneratedSessions(supabase, schedules, daysAhead);
 }
 
-export async function createFamily(name: string): Promise<void> {
+export async function createFamily(
+  name: string,
+  relation: ChildRelation = "parent",
+): Promise<void> {
   const ctx = await loadContext();
   if (!ctx.account) throw new Error("Not signed in");
   if (ctx.member) throw new Error("Already in a family");
   const { error } = await ctx.supabase.rpc("create_family", {
     family_name: name.trim(),
     display_name: ctx.account.displayName,
+    relation,
   });
   assertNoError(error, "Could not create family");
 
@@ -551,13 +555,17 @@ export async function createFamily(name: string): Promise<void> {
   assertNoError(inviteError, "Could not create the first invite code");
 }
 
-export async function joinFamily(codeRaw: string): Promise<void> {
+export async function joinFamily(
+  codeRaw: string,
+  relation: ChildRelation = "other",
+): Promise<void> {
   const ctx = await loadContext();
   if (!ctx.account) throw new Error("Not signed in");
   if (ctx.member) throw new Error("Already in a family");
   const { error } = await ctx.supabase.rpc("join_family", {
     raw_code: codeRaw,
     display_name: ctx.account.displayName,
+    relation,
   });
   assertNoError(error, "Could not join family");
 }

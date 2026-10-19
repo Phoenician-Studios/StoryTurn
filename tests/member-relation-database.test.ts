@@ -58,6 +58,40 @@ beforeAll(async () => {
 afterAll(async () => {
   await db?.close();
 });
+it("stores the relation picked when creating or joining a family", async () => {
+  await as(owner);
+  const ownerMember = (
+    await db.query<{ id: string; family_id: string }>(
+      "select id, family_id from family_members where user_id = $1",
+      [owner],
+    )
+  ).rows[0];
+  expect(await relationOf(ownerMember.id)).toBe("parent");
+  await db.query(
+    "insert into invite_codes(family_id,code,created_by_member_id) values($1,'JOINME',$2)",
+    [ownerMember.family_id, ownerMember.id],
+  );
+  const joiner = "00000000-0000-0000-0000-000000000004";
+  const creator = "00000000-0000-0000-0000-000000000005";
+  await db.query(
+    "insert into auth.users values($1,'aunt@example.com'),($2,'sitter@example.com')",
+    [joiner, creator],
+  );
+  await as(joiner);
+  await expect(db.query("select join_family('JOINME','Aunt','cousin')")).rejects.toThrow(
+    /Invalid relation/,
+  );
+  await db.query("select join_family('JOINME','Aunt','aunt_uncle')");
+  await as(creator);
+  await db.query("select create_family('Sitter family','Sitter','caregiver')");
+  const relations = await db.query<{ user_id: string; relation_to_children: string }>(
+    "select user_id, relation_to_children from family_members where user_id in ($1,$2)",
+    [joiner, creator],
+  );
+  expect(
+    Object.fromEntries(relations.rows.map((r) => [r.user_id, r.relation_to_children])),
+  ).toEqual({ [joiner]: "aunt_uncle", [creator]: "caregiver" });
+});
 it("lets a parent update a reader's relation to the kids", async () => {
   await as(owner);
   await db.query("select update_family_member_relation($1,'grandparent')", [rid]);
@@ -76,5 +110,5 @@ it("rejects invalid relations, non-owners, and other families' members", async (
     db.query("select update_family_member_relation($1,'parent')", [rid]),
   ).rejects.toThrow(/owner/);
   expect(await relationOf(rid)).toBe("grandparent");
-  expect(await relationOf(outsiderMemberId)).toBe("other");
+  expect(await relationOf(outsiderMemberId)).toBe("parent");
 });

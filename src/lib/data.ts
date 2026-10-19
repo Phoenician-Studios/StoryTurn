@@ -43,12 +43,14 @@ export async function getSessionDetail(sessionId: string, selectedLibraryOnly = 
     : live.getSessionDetail(sessionId, selectedLibraryOnly);
 }
 
-export async function createFamily(name: string) {
-  return isDemoMode() ? demo.createFamily(name) : live.createFamily(name);
+export async function createFamily(name: string, relation?: ChildRelation) {
+  return isDemoMode()
+    ? demo.createFamily(name, relation)
+    : live.createFamily(name, relation);
 }
 
-export async function joinFamily(code: string) {
-  return isDemoMode() ? demo.joinFamily(code) : live.joinFamily(code);
+export async function joinFamily(code: string, relation?: ChildRelation) {
+  return isDemoMode() ? demo.joinFamily(code, relation) : live.joinFamily(code, relation);
 }
 
 export async function addKid(name: string, birthday: string) {
