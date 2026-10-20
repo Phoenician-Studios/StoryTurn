@@ -27,48 +27,66 @@ async function authorize() {
 }
 const options = { beforeRequest: reserveBookLookup };
 
+function bookInputFromGoogleHit(
+  hit: {
+    title: string;
+    authors: string[];
+    coverUrl: string | null;
+    googleBooksId: string | null;
+    year: number | null;
+  },
+  isbn: string,
+): BookInput {
+  return {
+    title: hit.title,
+    authors: hit.authors,
+    openLibraryKey: null,
+    coverUrl: hit.coverUrl,
+    // Prefer the validated scanned barcode over provider identifiers
+    // (Google may surface OTHER / non-barcode values).
+    isbn,
+    editionKey: hit.googleBooksId
+      ? `google:${hit.googleBooksId}`
+      : `isbn:${isbn}`,
+    format: null,
+    publisher: null,
+    editionYear: hit.year ? String(hit.year) : null,
+  };
+}
+
+/**
+ * Shelf-scan waterfall: Google Books (when configured) → Open Library.
+ * Only treat the ISBN as missing when a provider successfully responds
+ * with no match; pure provider/pacing failures must throw.
+ */
 async function lookupScanEdition(isbn: string): Promise<BookInput | null> {
-  let openLibraryFailed = false;
+  let sawSuccessfulMiss = false;
+
+  if (isGoogleBooksConfigured()) {
+    try {
+      await reserveBookLookup();
+      const google = await lookupGoogleBooksByIsbn(isbn, {
+        limit: 1,
+        apiKey: process.env.GOOGLE_BOOKS_API_KEY?.trim() || null,
+      });
+      const hit = google[0];
+      if (hit) return bookInputFromGoogleHit(hit, isbn);
+      sawSuccessfulMiss = true;
+    } catch {
+      // Fall through to Open Library; do not treat provider failures as a miss.
+    }
+  }
+
   try {
     const ol = await lookupIsbn(isbn, options);
     if (ol) return ol;
+    sawSuccessfulMiss = true;
   } catch {
-    // Fall through to Google Books when configured; do not treat
-    // provider/pacing failures as a definitive ISBN miss.
-    openLibraryFailed = true;
+    // Fall through.
   }
 
-  if (!isGoogleBooksConfigured()) {
-    if (openLibraryFailed) throw new Error("Lookup unavailable");
-    return null;
-  }
-
-  try {
-    await reserveBookLookup();
-    const google = await lookupGoogleBooksByIsbn(isbn, {
-      limit: 1,
-      apiKey: process.env.GOOGLE_BOOKS_API_KEY?.trim() || null,
-    });
-    const hit = google[0];
-    if (!hit) return null;
-    return {
-      title: hit.title,
-      authors: hit.authors,
-      openLibraryKey: null,
-      coverUrl: hit.coverUrl,
-      // Prefer the validated scanned barcode over provider identifiers
-      // (Google may surface OTHER / non-barcode values).
-      isbn,
-      editionKey: hit.googleBooksId
-        ? `google:${hit.googleBooksId}`
-        : `isbn:${isbn}`,
-      format: null,
-      publisher: null,
-      editionYear: hit.year ? String(hit.year) : null,
-    };
-  } catch {
-    throw new Error("Lookup unavailable");
-  }
+  if (!sawSuccessfulMiss) throw new Error("Lookup unavailable");
+  return null;
 }
 
 export async function startScanAction() {

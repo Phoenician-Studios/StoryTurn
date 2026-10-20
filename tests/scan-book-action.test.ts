@@ -48,6 +48,60 @@ beforeEach(() => {
   process.env.GOOGLE_BOOKS_API_KEY = "test-key";
 });
 
+describe("scanBookAction Google-first waterfall", () => {
+  it("tries Google Books before Open Library when configured", async () => {
+    mocks.lookupGoogleBooksByIsbn.mockResolvedValue([
+      {
+        sourceId: "google:vol1",
+        source: "google",
+        openLibraryKey: null,
+        googleBooksId: "vol1",
+        title: "Good Morning, Farm Friends",
+        authors: ["Annie Bach"],
+        coverUrl: null,
+        isbn: VALID_ISBN13,
+        year: 2018,
+      },
+    ]);
+    mocks.saveBookEdition.mockResolvedValue({
+      book: { id: "book_1", title: "Good Morning, Farm Friends" },
+      created: true,
+    });
+
+    await scanBookAction(VALID_ISBN13, SESSION_ID);
+
+    expect(mocks.lookupGoogleBooksByIsbn).toHaveBeenCalled();
+    expect(mocks.lookupIsbn).not.toHaveBeenCalled();
+  });
+
+  it("falls back to Open Library after a Google miss", async () => {
+    mocks.lookupGoogleBooksByIsbn.mockResolvedValue([]);
+    mocks.lookupIsbn.mockResolvedValue({
+      title: "OL Title",
+      authors: ["OL Author"],
+      openLibraryKey: "/works/OL1W",
+      coverUrl: null,
+      isbn: VALID_ISBN13,
+      editionKey: "/books/OL1M",
+      format: null,
+      publisher: null,
+      editionYear: null,
+    });
+    mocks.saveBookEdition.mockResolvedValue({
+      book: { id: "book_1", title: "OL Title" },
+      created: true,
+    });
+
+    const result = await scanBookAction(VALID_ISBN13, SESSION_ID);
+
+    expect(result.ok).toBe(true);
+    expect(mocks.lookupIsbn).toHaveBeenCalledWith(
+      VALID_ISBN13,
+      expect.anything(),
+    );
+  });
+});
+
 describe("scanBookAction lookup errors vs misses", () => {
   it("returns lookup kind when Open Library fails and Google is unset", async () => {
     mocks.isGoogleBooksConfigured.mockReturnValue(false);
@@ -64,11 +118,11 @@ describe("scanBookAction lookup errors vs misses", () => {
     expect(mocks.saveBookEdition).not.toHaveBeenCalled();
   });
 
-  it("returns lookup kind when Google Books throws after an Open Library miss", async () => {
-    mocks.lookupIsbn.mockResolvedValue(null);
+  it("returns lookup kind when both Google and Open Library throw", async () => {
     mocks.lookupGoogleBooksByIsbn.mockRejectedValue(
       new Error("Google Books search failed (503)"),
     );
+    mocks.lookupIsbn.mockRejectedValue(new Error("Open Library 503"));
 
     const result = await scanBookAction(VALID_ISBN13, SESSION_ID);
 
@@ -79,9 +133,24 @@ describe("scanBookAction lookup errors vs misses", () => {
     });
   });
 
-  it("returns unknown only when providers respond with no match", async () => {
+  it("returns unknown when Google throws but Open Library confirms a miss", async () => {
+    mocks.lookupGoogleBooksByIsbn.mockRejectedValue(
+      new Error("Google Books search failed (503)"),
+    );
     mocks.lookupIsbn.mockResolvedValue(null);
+
+    const result = await scanBookAction(VALID_ISBN13, SESSION_ID);
+
+    expect(result).toEqual({
+      ok: false,
+      error: "No ISBN match. Try title search.",
+      kind: "unknown",
+    });
+  });
+
+  it("returns unknown only when providers respond with no match", async () => {
     mocks.lookupGoogleBooksByIsbn.mockResolvedValue([]);
+    mocks.lookupIsbn.mockResolvedValue(null);
 
     const result = await scanBookAction(VALID_ISBN13, SESSION_ID);
 
@@ -93,9 +162,8 @@ describe("scanBookAction lookup errors vs misses", () => {
   });
 });
 
-describe("scanBookAction Google fallback ISBN", () => {
+describe("scanBookAction Google ISBN", () => {
   it("stores the scanned ISBN even when Google returns OTHER identifiers", async () => {
-    mocks.lookupIsbn.mockResolvedValue(null);
     mocks.lookupGoogleBooksByIsbn.mockResolvedValue([
       {
         sourceId: "google:vol1",
@@ -117,6 +185,7 @@ describe("scanBookAction Google fallback ISBN", () => {
     const result = await scanBookAction(VALID_ISBN13, SESSION_ID);
 
     expect(result.ok).toBe(true);
+    expect(mocks.lookupIsbn).not.toHaveBeenCalled();
     expect(mocks.saveBookEdition).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Good Morning, Farm Friends",
