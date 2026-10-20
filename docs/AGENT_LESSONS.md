@@ -198,3 +198,19 @@ Durable lessons from PR review and production misses. `/start` loads `AGENT_CONT
 - **Going forward:** Shelf-scan Google hits always persist the `parseScannedBookCode` ISBN-13, not provider identifier metadata.
 - **Pointers:** `src/app/book-actions.ts` `lookupScanEdition`, `tests/scan-book-action.test.ts`
 - **Promoted:** AGENT_CONTEXT.md → ISBN / barcode lookup
+
+### 2026-10-20 — Shelf scan should be Google-first like library search
+
+- **Source:** human · product direction
+- **Gap:** Shelf scan tried Open Library before Google even though Google’s catalog is larger and library search was already Google-first.
+- **Going forward:** When `GOOGLE_BOOKS_API_KEY` is set, shelf scan and code lookup both try Google Books before Open Library.
+- **Pointers:** `src/app/book-actions.ts` `lookupScanEdition`, `src/lib/book-search.ts` `lookupBookByCode`
+- **Promoted:** AGENT_CONTEXT.md → ISBN / barcode lookup
+
+### 2026-10-20 — Do not let an earlier miss mask a later provider failure
+
+- **Source:** PR #28 · Bugbot
+- **Gap:** `sawSuccessfulMiss` from a Google empty response made a subsequent Open Library error return `null` / “No ISBN match”.
+- **Going forward:** Open Library is the terminal shelf-scan provider — OL success-with-null is a miss; OL/pacing failure always throws `lookup` even after a Google miss.
+- **Pointers:** `src/app/book-actions.ts` `lookupScanEdition`, `tests/scan-book-action.test.ts`
+- **Promoted:** AGENT_CONTEXT.md → ISBN / barcode lookup
