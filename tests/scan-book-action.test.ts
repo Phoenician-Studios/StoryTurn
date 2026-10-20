@@ -133,6 +133,19 @@ describe("scanBookAction lookup errors vs misses", () => {
     });
   });
 
+  it("returns lookup kind when Google misses but Open Library throws", async () => {
+    mocks.lookupGoogleBooksByIsbn.mockResolvedValue([]);
+    mocks.lookupIsbn.mockRejectedValue(new Error("Open Library 503"));
+
+    const result = await scanBookAction(VALID_ISBN13, SESSION_ID);
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Lookup unavailable. Retry this ISBN or search by title.",
+      kind: "lookup",
+    });
+  });
+
   it("returns unknown when Google throws but Open Library confirms a miss", async () => {
     mocks.lookupGoogleBooksByIsbn.mockRejectedValue(
       new Error("Google Books search failed (503)"),

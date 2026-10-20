@@ -56,12 +56,11 @@ function bookInputFromGoogleHit(
 
 /**
  * Shelf-scan waterfall: Google Books (when configured) → Open Library.
- * Only treat the ISBN as missing when a provider successfully responds
- * with no match; pure provider/pacing failures must throw.
+ * Open Library is the terminal provider: a successful OL miss is a miss,
+ * and an OL/pacing failure must throw even if Google already returned empty
+ * (so users retry instead of being told the ISBN is unknown).
  */
 async function lookupScanEdition(isbn: string): Promise<BookInput | null> {
-  let sawSuccessfulMiss = false;
-
   if (isGoogleBooksConfigured()) {
     try {
       await reserveBookLookup();
@@ -71,7 +70,6 @@ async function lookupScanEdition(isbn: string): Promise<BookInput | null> {
       });
       const hit = google[0];
       if (hit) return bookInputFromGoogleHit(hit, isbn);
-      sawSuccessfulMiss = true;
     } catch {
       // Fall through to Open Library; do not treat provider failures as a miss.
     }
@@ -80,13 +78,10 @@ async function lookupScanEdition(isbn: string): Promise<BookInput | null> {
   try {
     const ol = await lookupIsbn(isbn, options);
     if (ol) return ol;
-    sawSuccessfulMiss = true;
+    return null;
   } catch {
-    // Fall through.
+    throw new Error("Lookup unavailable");
   }
-
-  if (!sawSuccessfulMiss) throw new Error("Lookup unavailable");
-  return null;
 }
 
 export async function startScanAction() {
